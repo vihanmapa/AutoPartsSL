@@ -1,4 +1,5 @@
 
+
 export enum Condition {
   New = "Brand New",
   Reconditioned = "Reconditioned (Panchikawatta Spec)",
@@ -16,8 +17,14 @@ export interface Vehicle {
   id: string;
   make: string;
   model: string;
-  yearStart: number;
-  yearEnd?: number; // If undefined, still in production
+  year?: number; // Strict single year (Optional)
+  yearStart?: number; // Range start
+  yearEnd?: number; // Range end
+  years?: number[]; // List of years
+  chassisCode?: string;
+  engineCode?: string;
+  fuelType?: 'Petrol' | 'Diesel' | 'Hybrid' | 'Electric' | 'PHEV';
+  bodyType?: 'Sedan' | 'Hatchback' | 'SUV' | 'Van' | 'Truck' | 'Crossover';
 }
 
 export interface Vendor {
@@ -35,33 +42,41 @@ export interface Vendor {
   address?: string;
 }
 
+export interface CompatibleVariant {
+  vehicleId: string;
+  make: string;
+  model: string;
+  year: number;
+  searchKey: string;
+}
+
 export interface Product {
   id: string;
   title: string;
   price: number;
-  rrp?: number; // Recommended Retail Price for savings calculation
-  sku: string; // Must have for mechanics
+  rrp?: number;
+  sku: string;
   brand?: string;
   condition: Condition;
   origin: Origin;
   vendorId: string;
-  compatibleVehicleIds: string[]; // IDs of vehicles this part fits
+  compatibleVehicles: CompatibleVariant[];
   category: string;
   imageUrl: string;
   additionalImages?: string[];
   stock: number;
   longDescription?: string;
   specifications?: Record<string, string>;
-  hazards?: string[]; // e.g., "Flammable", "Irritant"
+  hazards?: string[];
 }
 
-export type UserRole = 'buyer' | 'vendor';
+export type UserRole = 'buyer' | 'vendor' | 'admin';
 
 export interface User {
   id: string;
   name: string;
   role: UserRole;
-  vendorId?: string; // If role is vendor
+  vendorId?: string;
   email?: string;
   phone?: string;
 }
@@ -88,11 +103,18 @@ export interface Order {
   totalAmount: number;
   shippingAddress: Address;
   paymentMethod: PaymentMethod;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  trackingNumber?: string;
+  courier?: string;
   date: string;
+  vendorIds?: string[];
 }
 
-// Global Type Augmentation for Social SDKs
+export interface AppState {
+  view: 'marketplace' | 'product-details' | 'vendor' | 'cart' | 'checkout' | 'order-success' | 'login' | 'vendor-login' | 'register-vendor' | 'my-account' | 'my-purchase' | 'vendor-store' | 'analyze' | 'admin-dashboard';
+}
+
 declare global {
   interface Window {
     google?: {

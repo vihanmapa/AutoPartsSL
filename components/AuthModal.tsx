@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, Facebook } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useNotification } from '../context/NotificationContext';
 import { Button } from './ui/Button';
 
 const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
@@ -21,6 +23,7 @@ const decodeJwt = (token: string) => {
 
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, closeAuthModal, login, registerBuyer, authView, setAuthView, updateUserProfile } = useApp();
+  const { notify } = useNotification();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,9 +118,20 @@ export const AuthModal: React.FC = () => {
     }, { scope: 'public_profile,email' });
   };
 
+  // --- VALIDATION UTILS ---
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidPhone = (phone: string) => /^\d{10,}$/.test(phone.replace(/\D/g, ''));
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!email) {
+      notify('error', 'Please enter your email.');
+      return;
+    }
+    if (!password) {
+      notify('error', 'Please enter your password.');
+      return;
+    }
 
     setIsLoading(true);
     await login(email, password);
@@ -126,8 +140,26 @@ export const AuthModal: React.FC = () => {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    if (!regName.trim()) {
+      notify('error', 'Full Name is required');
+      return;
+    }
+    if (!isValidEmail(regEmail)) {
+      notify('error', 'Please enter a valid email address');
+      return;
+    }
+    if (!isValidPhone(regPhone)) {
+      notify('error', 'Please enter a valid phone number (at least 10 digits)');
+      return;
+    }
+    if (regPassword.length < 6) {
+      notify('error', 'Password must be at least 6 characters long');
+      return;
+    }
     if (regPassword !== regConfirmPassword) {
-      alert("Passwords do not match");
+      notify('error', "Passwords do not match");
       return;
     }
     
@@ -150,6 +182,13 @@ export const AuthModal: React.FC = () => {
     setRegPhone("0777123456");
     setRegPassword("password123");
     setRegConfirmPassword("password123");
+    notify('info', 'Demo details filled');
+  };
+
+  const fillAdminLogin = () => {
+      setEmail('admin@autoparts.lk');
+      setPassword('admin123');
+      notify('info', 'Admin credentials filled');
   };
 
   if (!isAuthModalOpen) return null;
@@ -170,8 +209,13 @@ export const AuthModal: React.FC = () => {
               {authView === 'login' ? 'Log In' : 'Sign Up'}
             </h2>
             {authView === 'login' && (
-              <div className="hidden sm:flex items-center gap-1 bg-yellow-50 text-orange-500 border border-yellow-200 text-xs font-bold px-2 py-1 rounded shadow-sm">
-                Log in with QR
+              <div className="flex gap-2">
+                 <Button type="button" onClick={fillAdminLogin} variant="outline" size="sm" className="text-xs px-2 py-1 text-red-600 border-red-200 hover:bg-red-50">
+                    Admin
+                 </Button>
+                 <div className="hidden sm:flex items-center gap-1 bg-yellow-50 text-orange-500 border border-yellow-200 text-xs font-bold px-2 py-1 rounded shadow-sm">
+                    QR
+                 </div>
               </div>
             )}
             {authView === 'register' && (
@@ -236,7 +280,6 @@ export const AuthModal: React.FC = () => {
                   onChange={(e) => setRegName(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-300 rounded focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary bg-white text-slate-900 placeholder:text-slate-400"
                   placeholder="Full Name"
-                  required
                 />
               </div>
               <div>
@@ -246,7 +289,6 @@ export const AuthModal: React.FC = () => {
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-300 rounded focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary bg-white text-slate-900 placeholder:text-slate-400"
                   placeholder="Email Address"
-                  required
                 />
               </div>
               <div>
@@ -256,7 +298,6 @@ export const AuthModal: React.FC = () => {
                   onChange={(e) => setRegPhone(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-300 rounded focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary bg-white text-slate-900 placeholder:text-slate-400"
                   placeholder="Mobile Number"
-                  required
                 />
               </div>
               <div className="relative">
@@ -266,7 +307,6 @@ export const AuthModal: React.FC = () => {
                   onChange={(e) => setRegPassword(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-300 rounded focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary bg-white text-slate-900 placeholder:text-slate-400"
                   placeholder="Password"
-                  required
                 />
               </div>
               <div className="relative">
@@ -276,7 +316,6 @@ export const AuthModal: React.FC = () => {
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
                   className="w-full px-4 py-3 border border-slate-300 rounded focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary bg-white text-slate-900 placeholder:text-slate-400"
                   placeholder="Confirm Password"
-                  required
                 />
               </div>
 

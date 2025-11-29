@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, Wrench, LogOut, UserCircle, Search, LogIn, Store } from 'lucide-react';
+import { ShoppingCart, Wrench, LogOut, UserCircle, Search, LogIn, Store, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const Navbar: React.FC = () => {
@@ -59,6 +59,16 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-4">
             {isBuyer ? (
               <>
+                 {/* AI Analysis Button */}
+                 <button 
+                  onClick={() => setView('analyze')}
+                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full transition-colors border border-slate-700 group"
+                  title="AI Damage Analysis"
+                >
+                  <Camera className="h-4 w-4 text-secondary group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-gray-200 hidden sm:inline">AI Scan</span>
+                </button>
+
                 {/* Cart - Always visible for buyers */}
                 <button 
                   onClick={() => setView('cart')}

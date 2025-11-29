@@ -19,7 +19,15 @@ export const Marketplace: React.FC = () => {
 
     // Filter by vehicle compatibility
     if (selectedVehicle) {
-      filtered = filtered.filter(p => p.compatibleVehicleIds.includes(selectedVehicle.id));
+      filtered = filtered.filter(p => {
+        // Handle legacy or undefined compatibility
+        if (!p.compatibleVehicles) return false;
+        
+        // Check if any variant matches the selected vehicle ID
+        // Note: Ideally we check YEAR too, but selectedVehicle from context is the Model object.
+        // The filtering logic in VehicleSelector ensures we only pick a valid model for that year.
+        return p.compatibleVehicles.some(cv => cv.vehicleId === selectedVehicle.id);
+      });
     }
 
     return filtered;
