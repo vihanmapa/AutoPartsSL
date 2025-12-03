@@ -12,6 +12,7 @@ export const VehicleSelector: React.FC = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<Step>('MAKE');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Temporary selection state
   const [tempMake, setTempMake] = useState<string>('');
@@ -22,18 +23,22 @@ export const VehicleSelector: React.FC = () => {
 
   // 1. Unique Makes
   const availableMakes = useMemo(() => {
-    return Array.from(new Set(vehicles.map(v => v.make))).sort();
-  }, [vehicles]);
+    const makes = Array.from(new Set(vehicles.map(v => v.make))).sort();
+    if (!searchQuery) return makes;
+    return makes.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [vehicles, searchQuery]);
 
   // 2. Models for selected Make
   const availableModels = useMemo(() => {
     if (!tempMake) return [];
-    return Array.from(new Set(
+    const models = Array.from(new Set(
       vehicles
         .filter(v => v.make === tempMake)
         .map(v => v.model)
     )).sort();
-  }, [vehicles, tempMake]);
+    if (!searchQuery) return models;
+    return models.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [vehicles, tempMake, searchQuery]);
 
   // 3. Years for selected Make + Model
   const availableYears = useMemo(() => {
@@ -51,13 +56,15 @@ export const VehicleSelector: React.FC = () => {
         }
       }
     });
-    return Array.from(yearsSet).sort((a, b) => b - a);
-  }, [vehicles, tempMake, tempModel]);
+    const years = Array.from(yearsSet).sort((a, b) => b - a);
+    if (!searchQuery) return years;
+    return years.filter(y => y.toString().includes(searchQuery));
+  }, [vehicles, tempMake, tempModel, searchQuery]);
 
   // 4. Variants for selected Make + Model + Year
   const availableVariants = useMemo(() => {
     if (!tempMake || !tempModel || !tempYear) return [];
-    return vehicles.filter(v => {
+    const variants = vehicles.filter(v => {
       if (v.make !== tempMake || v.model !== tempModel) return false;
 
       // Check year compatibility
@@ -69,7 +76,14 @@ export const VehicleSelector: React.FC = () => {
       }
       return false;
     });
-  }, [vehicles, tempMake, tempModel, tempYear]);
+    if (!searchQuery) return variants;
+    return variants.filter(v =>
+      (v.chassisCode && v.chassisCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.engineCode && v.engineCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.fuelType && v.fuelType.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (v.bodyType && v.bodyType.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [vehicles, tempMake, tempModel, tempYear, searchQuery]);
 
   // --- HANDLERS ---
 
@@ -88,24 +102,28 @@ export const VehicleSelector: React.FC = () => {
     setTempMake('');
     setTempModel('');
     setTempYear(null);
+    setSearchQuery('');
   };
 
   const selectMake = (make: string) => {
     setTempMake(make);
     setStep('MODEL');
+    setSearchQuery('');
   };
 
   const selectModel = (model: string) => {
     setTempModel(model);
     setStep('YEAR');
+    setSearchQuery('');
   };
 
   const selectYear = (year: number) => {
     setTempYear(year);
+    setSearchQuery('');
     // Check if we need to select a variant
     // We need to see how many vehicles match this Make/Model/Year
     // Note: availableVariants depends on state, but state updates are async.
-    // So we calculate it here immediately.
+    // So we calculate it here immediately (without search query since we just cleared it).
     const variants = vehicles.filter(v => {
       if (v.make !== tempMake || v.model !== tempModel) return false;
       if (v.year === year) return true;
@@ -119,7 +137,7 @@ export const VehicleSelector: React.FC = () => {
 
     if (variants.length === 1) {
       // Exact match found
-      setSelectedVehicle(variants[0]);
+      setSelectedVehicle({ ...variants[0], year: year });
       setIsOpen(false);
     } else if (variants.length > 1) {
       // Multiple variants (e.g. different engines/chassis)
@@ -131,11 +149,12 @@ export const VehicleSelector: React.FC = () => {
   };
 
   const selectVariant = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
+    setSelectedVehicle({ ...vehicle, year: tempYear || vehicle.year });
     setIsOpen(false);
   };
 
   const goBack = () => {
+    setSearchQuery('');
     if (step === 'MODEL') setStep('MAKE');
     else if (step === 'YEAR') setStep('MODEL');
     else if (step === 'VARIANT') setStep('YEAR');
@@ -194,8 +213,8 @@ export const VehicleSelector: React.FC = () => {
                 <div className="text-left">
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">My Vehicle</p>
                   <p className="text-lg font-bold text-slate-900">
-                    {selectedVehicle.year && <span className="text-slate-500 mr-1">{selectedVehicle.year}</span>}
                     {selectedVehicle.make} {selectedVehicle.model}
+                    {selectedVehicle.year && <span className="text-slate-500 font-normal ml-1">, {selectedVehicle.year}</span>}
                   </p>
                   {selectedVehicle.chassisCode && (
                     <span className="inline-block mt-1 bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
@@ -225,22 +244,37 @@ export const VehicleSelector: React.FC = () => {
       {isOpen && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom duration-300">
           {/* Header */}
-          <div className="px-4 py-4 pt-12 border-b border-slate-100 flex items-center gap-4 bg-white sticky top-0 z-10">
-            <button onClick={step === 'MAKE' ? handleClose : goBack} className="p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-full">
-              {step === 'MAKE' ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
-            </button>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-slate-900">
-                {step === 'MAKE' && 'Select Make'}
-                {step === 'MODEL' && 'Select Model'}
-                {step === 'YEAR' && 'Select Year'}
-                {step === 'VARIANT' && 'Select Version'}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {step !== 'MAKE' && `${tempMake}`}
-                {step !== 'MAKE' && step !== 'MODEL' && ` • ${tempModel}`}
-                {step === 'VARIANT' && ` • ${tempYear}`}
-              </p>
+          <div className="px-4 py-4 pt-24 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
+            <div className="flex items-center gap-4">
+              <button onClick={step === 'MAKE' ? handleClose : goBack} className="p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-full">
+                {step === 'MAKE' ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
+              </button>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {step === 'MAKE' && 'Select Make'}
+                  {step === 'MODEL' && 'Select Model'}
+                  {step === 'YEAR' && 'Select Year'}
+                  {step === 'VARIANT' && 'Select Version'}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {step !== 'MAKE' && `${tempMake}`}
+                  {step !== 'MAKE' && step !== 'MODEL' && ` • ${tempModel}`}
+                  {step === 'VARIANT' && ` • ${tempYear}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${step.toLowerCase()}...`}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                autoFocus
+              />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
             </div>
           </div>
 
@@ -260,6 +294,11 @@ export const VehicleSelector: React.FC = () => {
                     <span className="font-bold text-slate-900">{make}</span>
                   </button>
                 ))}
+                {availableMakes.length === 0 && (
+                  <div className="col-span-2 text-center py-8 text-slate-500">
+                    No makes found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             )}
 
@@ -276,6 +315,11 @@ export const VehicleSelector: React.FC = () => {
                     <ChevronRight className="h-5 w-5 text-slate-300" />
                   </button>
                 ))}
+                {availableModels.length === 0 && (
+                  <div className="text-center py-8 text-slate-500">
+                    No models found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             )}
 
@@ -291,6 +335,11 @@ export const VehicleSelector: React.FC = () => {
                     {year}
                   </button>
                 ))}
+                {availableYears.length === 0 && (
+                  <div className="col-span-3 text-center py-8 text-slate-500">
+                    No years found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             )}
 
@@ -321,6 +370,11 @@ export const VehicleSelector: React.FC = () => {
                     </div>
                   </button>
                 ))}
+                {availableVariants.length === 0 && (
+                  <div className="text-center py-8 text-slate-500">
+                    No variants found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             )}
           </div>

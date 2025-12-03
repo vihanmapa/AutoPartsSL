@@ -7,7 +7,7 @@ export const MobileHeader: React.FC = () => {
 
     if (view === 'marketplace') {
         return (
-            <div className="bg-slate-900 text-white p-4 pt-12 sticky top-0 z-40">
+            <div className="bg-slate-900 text-white p-4 pt-20 sticky top-0 z-40">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
                         <div className="h-8 w-8 bg-orange-500 rounded-lg flex items-center justify-center">
