@@ -28,15 +28,15 @@ export const ImageAnalysis: React.FC = () => {
 
   const handleAnalyze = async () => {
     if (!image) return;
-    
+
     setIsAnalyzing(true);
     try {
       const analysis = await analyzeVehicleImage(image);
       setResult(analysis);
       notify('success', "Image analysis complete!");
-    } catch (error) {
-      notify('error', "Failed to analyze image. Please try again.");
-      console.error(error);
+    } catch (error: any) {
+      console.error("Analysis failed:", error);
+      notify('error', error.message || "Failed to analyze image. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -62,7 +62,7 @@ export const ImageAnalysis: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left: Upload Area */}
         <div className="space-y-6">
-          <div 
+          <div
             className={`border-2 border-dashed rounded-xl h-[400px] flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden bg-slate-50 relative ${image ? 'border-secondary' : 'border-slate-300 hover:border-slate-400'}`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -78,18 +78,18 @@ export const ImageAnalysis: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-2">Supports JPG, PNG (Max 5MB)</p>
               </div>
             )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
               onChange={handleFileSelect}
             />
           </div>
 
-          <Button 
-            onClick={handleAnalyze} 
-            disabled={!image || isAnalyzing} 
+          <Button
+            onClick={handleAnalyze}
+            disabled={!image || isAnalyzing}
             className="w-full h-12 text-lg"
           >
             {isAnalyzing ? (
@@ -115,12 +115,12 @@ export const ImageAnalysis: React.FC = () => {
 
           {isAnalyzing && (
             <div className="h-full flex flex-col items-center justify-center text-slate-500">
-               <div className="relative h-16 w-16 mb-4">
-                 <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
-                 <div className="absolute inset-0 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-               </div>
-               <p className="font-medium text-slate-700">Identifying damaged parts...</p>
-               <p className="text-sm">This typically takes 5-10 seconds.</p>
+              <div className="relative h-16 w-16 mb-4">
+                <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <p className="font-medium text-slate-700">Identifying damaged parts...</p>
+              <p className="text-sm">This typically takes 5-10 seconds.</p>
             </div>
           )}
 
@@ -152,20 +152,19 @@ export const ImageAnalysis: React.FC = () => {
                           <div>
                             <h4 className="font-bold text-slate-900 flex items-center gap-2">
                               {part.partName}
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold border ${
-                                part.confidenceLevel === 'High' ? 'bg-green-100 text-green-700 border-green-200' : 
-                                part.confidenceLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 
-                                'bg-slate-100 text-slate-600 border-slate-200'
-                              }`}>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold border ${part.confidenceLevel === 'High' ? 'bg-green-100 text-green-700 border-green-200' :
+                                part.confidenceLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                  'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
                                 {part.confidenceLevel} Confidence
                               </span>
                             </h4>
                           </div>
                         </div>
                         <p className="text-sm text-slate-600 mb-3">{part.damageDescription}</p>
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
+                        <Button
+                          size="sm"
+                          variant="secondary"
                           className="w-full sm:w-auto"
                           onClick={() => handleFindPart(part.searchQuery)}
                         >

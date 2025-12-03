@@ -8,10 +8,10 @@ export const ToastContainer: React.FC = () => {
   return (
     <div className="fixed top-20 right-4 z-[200] flex flex-col gap-3 pointer-events-none">
       {notifications.map(notification => (
-        <ToastItem 
-          key={notification.id} 
-          {...notification} 
-          onClose={() => removeNotification(notification.id)} 
+        <ToastItem
+          key={notification.id}
+          {...notification}
+          onClose={() => removeNotification(notification.id)}
         />
       ))}
     </div>

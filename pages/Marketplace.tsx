@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { ProductCard } from '../components/ProductCard';
@@ -22,10 +21,8 @@ export const Marketplace: React.FC = () => {
       filtered = filtered.filter(p => {
         // Handle legacy or undefined compatibility
         if (!p.compatibleVehicles) return false;
-        
+
         // Check if any variant matches the selected vehicle ID
-        // Note: Ideally we check YEAR too, but selectedVehicle from context is the Model object.
-        // The filtering logic in VehicleSelector ensures we only pick a valid model for that year.
         return p.compatibleVehicles.some(cv => cv.vehicleId === selectedVehicle.id);
       });
     }
@@ -34,18 +31,13 @@ export const Marketplace: React.FC = () => {
   }, [selectedVehicle, searchQuery, products]);
 
   const LoadingSkeleton = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-        <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden h-[350px] animate-pulse">
+    <div className="space-y-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden h-[300px] animate-pulse">
           <div className="h-48 bg-slate-200"></div>
           <div className="p-4 space-y-3">
             <div className="h-4 bg-slate-200 rounded w-1/4"></div>
             <div className="h-6 bg-slate-200 rounded w-3/4"></div>
-            <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-            <div className="flex justify-between pt-4">
-               <div className="h-6 bg-slate-200 rounded w-1/3"></div>
-               <div className="h-8 bg-slate-200 rounded w-1/4"></div>
-            </div>
           </div>
         </div>
       ))}
@@ -53,15 +45,15 @@ export const Marketplace: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-24 bg-slate-50">
       <VehicleSelector />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-800">
+
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-900">
             {selectedVehicle ? 'Compatible Parts' : 'Featured Products'}
           </h2>
-          <span className="text-slate-500 text-sm">
+          <span className="text-slate-500 text-xs">
             {isLoading ? 'Updating...' : `Showing ${filteredProducts.length} results`}
           </span>
         </div>
@@ -69,7 +61,7 @@ export const Marketplace: React.FC = () => {
         {isLoading ? (
           <LoadingSkeleton />
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="space-y-4">
             {filteredProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -78,7 +70,7 @@ export const Marketplace: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <FilterX className="h-16 w-16 mb-4 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">No Parts Found</h3>
-            <p className="max-w-md text-center">
+            <p className="max-w-md text-center text-sm">
               We couldn't find any parts matching your criteria. Try adjusting your search or vehicle filters.
             </p>
           </div>

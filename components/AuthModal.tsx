@@ -12,8 +12,8 @@ const decodeJwt = (token: string) => {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     }).join(''));
     return JSON.parse(jsonPayload);
   } catch (e) {
@@ -24,10 +24,10 @@ const decodeJwt = (token: string) => {
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, closeAuthModal, login, registerBuyer, authView, setAuthView, updateUserProfile } = useApp();
   const { notify } = useNotification();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
@@ -41,7 +41,7 @@ export const AuthModal: React.FC = () => {
     if (!isAuthModalOpen) return;
 
     if (!FACEBOOK_APP_ID.includes("YOUR_FACEBOOK_APP_ID")) {
-      window.fbAsyncInit = function() {
+      window.fbAsyncInit = function () {
         window.FB?.init({
           appId: FACEBOOK_APP_ID,
           cookie: true,
@@ -140,7 +140,7 @@ export const AuthModal: React.FC = () => {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!regName.trim()) {
       notify('error', 'Full Name is required');
@@ -162,9 +162,9 @@ export const AuthModal: React.FC = () => {
       notify('error', "Passwords do not match");
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     await registerBuyer({
       name: regName,
       email: regEmail,
@@ -186,9 +186,9 @@ export const AuthModal: React.FC = () => {
   };
 
   const fillAdminLogin = () => {
-      setEmail('admin@autoparts.lk');
-      setPassword('admin123');
-      notify('info', 'Admin credentials filled');
+    setEmail('admin@autoparts.lk');
+    setPassword('admin123');
+    notify('info', 'Admin credentials filled');
   };
 
   if (!isAuthModalOpen) return null;
@@ -196,7 +196,7 @@ export const AuthModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-[400px] rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative">
-        <button 
+        <button
           onClick={closeAuthModal}
           className="absolute top-3 right-3 p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors z-10"
         >
@@ -210,12 +210,12 @@ export const AuthModal: React.FC = () => {
             </h2>
             {authView === 'login' && (
               <div className="flex gap-2">
-                 <Button type="button" onClick={fillAdminLogin} variant="outline" size="sm" className="text-xs px-2 py-1 text-red-600 border-red-200 hover:bg-red-50">
-                    Admin
-                 </Button>
-                 <div className="hidden sm:flex items-center gap-1 bg-yellow-50 text-orange-500 border border-yellow-200 text-xs font-bold px-2 py-1 rounded shadow-sm">
-                    QR
-                 </div>
+                <Button type="button" onClick={fillAdminLogin} variant="outline" size="sm" className="text-xs px-2 py-1 text-red-600 border-red-200 hover:bg-red-50">
+                  Admin
+                </Button>
+                <div className="hidden sm:flex items-center gap-1 bg-yellow-50 text-orange-500 border border-yellow-200 text-xs font-bold px-2 py-1 rounded shadow-sm">
+                  QR
+                </div>
               </div>
             )}
             {authView === 'register' && (
@@ -258,14 +258,14 @@ export const AuthModal: React.FC = () => {
                 </button>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full py-3 bg-secondary hover:bg-secondary-hover text-white font-semibold uppercase tracking-wide text-sm shadow-none rounded"
                 disabled={isLoading}
               >
                 {isLoading ? 'LOGGING IN...' : 'LOG IN'}
               </Button>
-              
+
               <div className="flex justify-between mt-3 text-xs">
                 <button type="button" className="text-blue-600 hover:underline">Forgot Password</button>
                 <button type="button" className="text-blue-600 hover:underline">Log in with SMS</button>
@@ -273,7 +273,7 @@ export const AuthModal: React.FC = () => {
             </form>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
-               <div>
+              <div>
                 <input
                   type="text"
                   value={regName}
@@ -319,8 +319,8 @@ export const AuthModal: React.FC = () => {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full py-3 bg-secondary hover:bg-secondary-hover text-white font-semibold uppercase tracking-wide text-sm shadow-none rounded"
                 disabled={isLoading}
               >
@@ -336,7 +336,7 @@ export const AuthModal: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button 
+            <button
               type="button"
               onClick={handleFacebookLogin}
               className="flex items-center justify-center gap-2 border border-slate-300 py-2 rounded hover:bg-slate-50 transition-colors"
@@ -344,7 +344,7 @@ export const AuthModal: React.FC = () => {
               <Facebook className="h-5 w-5 text-[#1877F2]" fill="currentColor" />
               <span className="text-sm text-slate-600">Facebook</span>
             </button>
-            <button 
+            <button
               type="button"
               onClick={handleGoogleLogin}
               className="flex items-center justify-center gap-2 border border-slate-300 py-2 rounded hover:bg-slate-50 transition-colors"

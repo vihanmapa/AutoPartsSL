@@ -3,7 +3,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Vehicle } from "../types";
 
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (window as any).process?.env?.GEMINI_API_KEY || 'MockKey';
+const ai = new GoogleGenAI({ apiKey });
+
+const checkApiKey = () => {
+  if (apiKey === 'MockKey' || apiKey === 'YOUR_API_KEY_HERE') {
+    throw new Error("Missing Gemini API Key. Please set GEMINI_API_KEY in .env file.");
+  }
+};
 
 export interface DamageAnalysisResult {
   damageDetected: boolean;
@@ -18,10 +25,11 @@ export interface DamageAnalysisResult {
 
 export const analyzeVehicleImage = async (base64Image: string): Promise<DamageAnalysisResult> => {
   try {
+    checkApiKey();
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-1.5-flash-001",
       contents: [
         {
           role: "user",
@@ -71,7 +79,7 @@ export const analyzeVehicleImage = async (base64Image: string): Promise<DamageAn
     if (response.text) {
       return JSON.parse(response.text) as DamageAnalysisResult;
     }
-    
+
     throw new Error("No response text from Gemini");
 
   } catch (error) {

@@ -26,12 +26,12 @@ export const Navbar: React.FC = () => {
   }, []);
 
   return (
-    <nav className="bg-primary text-white shadow-lg sticky top-0 z-50">
+    <nav className="bg-primary text-white shadow-lg sticky top-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <div 
-            className="flex items-center gap-2 cursor-pointer" 
+          <div
+            className="flex items-center gap-2 cursor-pointer"
             onClick={() => setView('marketplace')}
           >
             <Wrench className="h-8 w-8 text-secondary" />
@@ -59,8 +59,8 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-4">
             {isBuyer ? (
               <>
-                 {/* AI Analysis Button */}
-                 <button 
+                {/* AI Analysis Button */}
+                <button
                   onClick={() => setView('analyze')}
                   className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full transition-colors border border-slate-700 group"
                   title="AI Damage Analysis"
@@ -70,7 +70,7 @@ export const Navbar: React.FC = () => {
                 </button>
 
                 {/* Cart - Always visible for buyers */}
-                <button 
+                <button
                   onClick={() => setView('cart')}
                   className="relative p-2 hover:bg-slate-800 rounded-full transition-colors"
                 >
@@ -97,9 +97,9 @@ export const Navbar: React.FC = () => {
                     >
                       Become a Seller
                     </button>
-                    
+
                     <div className="hidden md:flex items-center gap-2">
-                       <button
+                      <button
                         onClick={() => openAuthModal('register')}
                         className="text-sm font-medium text-white hover:text-secondary transition-colors"
                       >
@@ -113,24 +113,30 @@ export const Navbar: React.FC = () => {
                         Login
                       </button>
                     </div>
-                    
+
                     {/* Mobile specific menu items */}
                     <button
-                       onClick={() => switchUserRole('vendor')}
-                       className="md:hidden text-gray-400"
+                      onClick={() => switchUserRole('vendor')}
+                      className="md:hidden text-gray-400"
                     >
                       <Store className="h-6 w-6" />
+                    </button>
+                    <button
+                      onClick={() => openAuthModal('login')}
+                      className="md:hidden text-gray-400"
+                    >
+                      <UserCircle className="h-6 w-6" />
                     </button>
                   </>
                 ) : (
                   /* Logged In Buyer View with Dropdown */
                   <div className="relative" ref={dropdownRef}>
-                    <button 
+                    <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="flex items-center gap-3 focus:outline-none group"
                     >
                       <div className="h-9 w-9 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-white font-bold shadow-sm group-hover:border-secondary transition-colors overflow-hidden">
-                         {currentUser.name.charAt(0)}
+                        {currentUser.name.charAt(0)}
                       </div>
                       <span className="hidden sm:inline font-medium text-sm group-hover:text-gray-200">{currentUser.name}</span>
                     </button>
@@ -139,14 +145,14 @@ export const Navbar: React.FC = () => {
                       <div className="absolute right-0 mt-3 w-56 bg-white rounded-lg shadow-xl py-2 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
                         {/* Pointer */}
                         <div className="absolute -top-2 right-3 w-4 h-4 bg-white transform rotate-45"></div>
-                        
+
                         <div className="relative bg-white rounded-lg overflow-hidden">
                           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                             <p className="text-xs text-slate-500 font-medium">Signed in as</p>
-                             <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
+                            <p className="text-xs text-slate-500 font-medium">Signed in as</p>
+                            <p className="text-sm font-bold text-slate-900 truncate">{currentUser.name}</p>
                           </div>
 
-                          <button 
+                          <button
                             className="w-full text-left px-4 py-3 hover:bg-slate-50 font-semibold text-slate-700 text-sm transition-colors"
                             onClick={() => {
                               setView('my-account');
@@ -155,8 +161,8 @@ export const Navbar: React.FC = () => {
                           >
                             My Account
                           </button>
-                          
-                          <button 
+
+                          <button
                             className="w-full text-left px-4 py-3 hover:bg-slate-50 font-bold text-teal-500 text-sm transition-colors"
                             onClick={() => {
                               setView('my-purchase');
@@ -167,8 +173,8 @@ export const Navbar: React.FC = () => {
                           </button>
 
                           <div className="border-t border-slate-100 my-1"></div>
-                          
-                          <button 
+
+                          <button
                             onClick={() => {
                               setIsDropdownOpen(false);
                               logout();
@@ -186,12 +192,12 @@ export const Navbar: React.FC = () => {
             ) : (
               // Vendor View
               <div className="flex items-center gap-4">
-                <button 
+                <button
                   onClick={() => setView('vendor')}
                   className="flex items-center gap-2 text-secondary font-medium hover:text-white transition-colors"
                 >
                   <Store className="h-5 w-5" />
-                  <span>{currentUser.name}</span>
+                  <span className="hidden sm:inline">{currentUser.name}</span>
                 </button>
                 <div className="h-4 w-px bg-slate-700 mx-1"></div>
                 <button
@@ -199,7 +205,8 @@ export const Navbar: React.FC = () => {
                   className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"
                 >
                   <LogOut className="h-4 w-4" />
-                  Exit Vendor Mode
+                  <span className="hidden sm:inline">Exit Vendor Mode</span>
+                  <span className="sm:hidden">Exit</span>
                 </button>
               </div>
             )}

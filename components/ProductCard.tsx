@@ -33,7 +33,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   // Check if this product specifically fits the selected vehicle and year
   const isExactFit = React.useMemo(() => {
     if (!selectedVehicle) return false;
-    
+
     // Legacy support or empty array check
     if (!product.compatibleVehicles) return false;
 
@@ -46,23 +46,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     // BUT, the prompt implies "Exact Fit" should be smarter. 
     // Assuming `selectedVehicle` might be just the base model definition.
     // Let's check if the ID exists in the compatibility list.
-    
+
     // If the User selected a specific year in the filtering tool, we should ideally check that.
     // Currently AppContext stores `selectedVehicle: Vehicle | null`.
     // We will assume if the vehicle ID matches, it fits (since the user likely filtered by year to get that vehicle).
-    
+
     return product.compatibleVehicles.some(cv => cv.vehicleId === selectedVehicle.id);
   }, [selectedVehicle, product.compatibleVehicles]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-slate-100 overflow-hidden flex flex-col h-full group">
-      <div 
+      <div
         className="relative h-48 w-full bg-gray-100 overflow-hidden cursor-pointer"
         onClick={() => viewProduct(product)}
       >
-        <img 
-          src={product.imageUrl} 
-          alt={product.title} 
+        <img
+          src={product.imageUrl}
+          alt={product.title}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
         />
         {isExactFit && (
@@ -71,7 +71,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
         )}
       </div>
-      
+
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${getConditionColor(product.condition)}`}>
@@ -82,7 +82,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </span>
         </div>
 
-        <h3 
+        <h3
           className="font-bold text-slate-800 text-lg leading-tight mb-1 cursor-pointer hover:text-secondary transition-colors"
           onClick={() => viewProduct(product)}
         >
@@ -90,7 +90,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </h3>
         <p className="text-sm text-slate-500 mb-4">
           Sold by{' '}
-          <span 
+          <span
             className="text-blue-600 font-medium hover:underline cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -100,14 +100,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {vendor?.name || 'Unknown Vendor'}
           </span>
         </p>
-        
+
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100">
           <div className="text-xl font-bold text-slate-900">
             {formatCurrency(product.price)}
           </div>
-          <Button 
-            size="sm" 
-            variant="secondary" 
+          <Button
+            size="sm"
+            variant="secondary"
             className="rounded-full px-4"
             onClick={(e) => {
               e.stopPropagation();

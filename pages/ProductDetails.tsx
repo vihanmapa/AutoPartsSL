@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
-import { 
-  ArrowLeft, 
-  ShoppingCart, 
-  ShieldCheck, 
-  Truck, 
-  Store, 
-  CreditCard, 
-  Share2, 
+import {
+  ArrowLeft,
+  ShoppingCart,
+  ShieldCheck,
+  Truck,
+  Store,
+  CreditCard,
+  Share2,
   Heart,
   Package,
   Flame,
@@ -60,7 +60,7 @@ export const ProductDetails: React.FC = () => {
   return (
     <div className="bg-white min-h-screen pb-12">
       {/* Breadcrumb & Header */}
-      <div className="bg-slate-50 border-b border-slate-200 sticky top-[60px] z-30">
+      <div className="bg-slate-50 border-b border-slate-200 sticky top-0 pt-12 z-30">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
             <button onClick={() => setView('marketplace')} className="hover:text-secondary">Home</button>
@@ -69,7 +69,7 @@ export const ProductDetails: React.FC = () => {
             <span>/</span>
             <span className="text-slate-900 font-medium truncate max-w-[200px]">{selectedProduct.title}</span>
           </div>
-          <button 
+          <button
             onClick={() => setView('marketplace')}
             className="flex items-center gap-1 text-secondary font-medium text-sm hover:underline"
           >
@@ -80,14 +80,14 @@ export const ProductDetails: React.FC = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
           {/* LEFT: Images (5 cols) */}
           <div className="lg:col-span-5">
             <div className="sticky top-32 space-y-4">
               <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden border border-slate-200 relative group">
-                <img 
-                  src={selectedProduct.imageUrl} 
-                  alt={selectedProduct.title} 
+                <img
+                  src={selectedProduct.imageUrl}
+                  alt={selectedProduct.title}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 {selectedProduct.brand && (
@@ -111,7 +111,7 @@ export const ProductDetails: React.FC = () => {
                   SKU: {selectedProduct.sku}
                 </span>
                 {vendor && (
-                  <button 
+                  <button
                     onClick={() => viewVendorStore(vendor.id)}
                     className="text-blue-600 font-medium flex items-center gap-1 hover:underline hover:text-blue-700"
                   >
@@ -123,11 +123,10 @@ export const ProductDetails: React.FC = () => {
 
             {/* Condition & Origin Badges */}
             <div className="flex flex-wrap gap-2">
-              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${
-                selectedProduct.condition === Condition.New 
-                  ? 'bg-green-50 text-green-700 border-green-200' 
-                  : 'bg-orange-50 text-orange-700 border-orange-200'
-              }`}>
+              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${selectedProduct.condition === Condition.New
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-orange-50 text-orange-700 border-orange-200'
+                }`}>
                 <Package className="h-3 w-3" />
                 {selectedProduct.condition}
               </div>
@@ -140,14 +139,14 @@ export const ProductDetails: React.FC = () => {
             {/* Tabs: Description / Specs / Hazards */}
             <div className="border-t border-slate-200 pt-6">
               <div className="flex gap-6 border-b border-slate-200 mb-4">
-                <button 
+                <button
                   className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'description' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'}`}
                   onClick={() => setActiveTab('description')}
                 >
                   Description
                   {activeTab === 'description' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-secondary"></div>}
                 </button>
-                <button 
+                <button
                   className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'specs' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'}`}
                   onClick={() => setActiveTab('specs')}
                 >
@@ -155,7 +154,7 @@ export const ProductDetails: React.FC = () => {
                   {activeTab === 'specs' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-secondary"></div>}
                 </button>
                 {selectedProduct.hazards && selectedProduct.hazards.length > 0 && (
-                  <button 
+                  <button
                     className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'hazards' ? 'text-red-600' : 'text-slate-500 hover:text-red-600'}`}
                     onClick={() => setActiveTab('hazards')}
                   >
@@ -176,7 +175,7 @@ export const ProductDetails: React.FC = () => {
                     </ul>
                   </div>
                 )}
-                
+
                 {activeTab === 'specs' && (
                   <div>
                     {selectedProduct.specifications ? (
@@ -259,18 +258,18 @@ export const ProductDetails: React.FC = () => {
               {/* Action Buttons */}
               <div className="space-y-3 mb-6">
                 <div className="flex flex-col gap-3">
-                  <Button 
-                    size="lg" 
-                    className="w-full text-lg h-12" 
+                  <Button
+                    size="lg"
+                    className="w-full text-lg h-12"
                     variant="primary"
                     onClick={handleBuyNow}
                     disabled={selectedProduct.stock === 0}
                   >
                     <Zap className="mr-2 h-5 w-5 fill-current" /> Buy Now
                   </Button>
-                  <Button 
-                    size="lg" 
-                    className="w-full text-lg h-12" 
+                  <Button
+                    size="lg"
+                    className="w-full text-lg h-12"
                     variant="secondary"
                     onClick={() => addToCart(selectedProduct)}
                     disabled={selectedProduct.stock === 0}
@@ -278,7 +277,7 @@ export const ProductDetails: React.FC = () => {
                     <ShoppingCart className="mr-2 h-5 w-5" /> Add to Basket
                   </Button>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <Button variant="outline" size="sm" className="w-full text-xs">
                     <Heart className="mr-1 h-3 w-3" /> Save
@@ -295,10 +294,10 @@ export const ProductDetails: React.FC = () => {
                   <Truck className="h-4 w-4 text-slate-400" /> Delivery & Collection
                 </h4>
                 <div className="flex gap-2 mb-2">
-                  <input 
-                    type="text" 
-                    placeholder="Postcode" 
-                    className="w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase bg-white text-slate-900"
+                  <input
+                    type="text"
+                    placeholder="Postcode"
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-base uppercase bg-white text-slate-900"
                     value={postcode}
                     onClick={() => !postcode && setPostcode('10250')}
                     onChange={(e) => setPostcode(e.target.value)}

@@ -1,16 +1,17 @@
 
 import { Product, Vehicle, Vendor, User, Order } from '../types';
+import { MOCK_VEHICLES, MOCK_PRODUCTS, MOCK_VENDORS } from './mockData';
 import { auth, db } from './firebase';
 import * as firestore from 'firebase/firestore';
 import * as firebaseAuth from 'firebase/auth';
 
-const { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  setDoc, 
-  query, 
+const {
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc,
+  query,
   where,
   addDoc,
   onSnapshot,
@@ -21,10 +22,10 @@ const {
   increment
 } = firestore as any;
 
-const { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile 
+const {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
 } = firebaseAuth as any;
 
 const mapDoc = (doc: any) => ({ id: doc.id, ...doc.data() });
@@ -61,7 +62,7 @@ export const api = {
     const querySnapshot = await getDocs(collection(db, 'users'));
     return querySnapshot.docs.map((doc: any) => mapDoc(doc) as User);
   },
-  
+
   getAllOrders: async (): Promise<Order[]> => {
     const querySnapshot = await getDocs(collection(db, 'orders'));
     return querySnapshot.docs.map((doc: any) => mapDoc(doc) as Order);
@@ -156,7 +157,7 @@ export const api = {
     const q = query(collection(db, 'orders'));
     return onSnapshot(q, (snapshot: any) => {
       const allOrders = snapshot.docs.map((doc: any) => doc.data() as Order);
-      const vendorOrders = allOrders.filter(order => 
+      const vendorOrders = allOrders.filter(order =>
         (order.vendorIds && order.vendorIds.includes(vendorId)) ||
         order.items.some(item => item.vendorId === vendorId)
       );
@@ -177,8 +178,8 @@ export const api = {
   loginUser: async (email: string, password?: string): Promise<User> => {
     if (!password) throw new Error("Password required");
     if (email === 'admin@autoparts.lk' && password === 'admin123') {
-        await new Promise(r => setTimeout(r, 800));
-        return { id: 'admin_user', name: 'System Administrator', email, role: 'admin' };
+      await new Promise(r => setTimeout(r, 800));
+      return { id: 'admin_user', name: 'System Administrator', email, role: 'admin' };
     }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const docRef = doc(db, 'users', userCredential.user.uid);
@@ -218,5 +219,53 @@ export const api = {
   updateProduct: async (id: string, data: Partial<Product>) => { await updateDoc(doc(db, 'products', id), data); },
   deleteProduct: async (id: string) => { await deleteDoc(doc(db, 'products', id)); },
   updateVendor: async (id: string, data: Partial<Vendor>) => { await updateDoc(doc(db, 'vendors', id), data); },
-  seedDatabase: async () => {}
+  seedDatabase: async (onProgress?: (msg: string) => void) => {
+    // Batch 1: Vehicles
+    onProgress?.("Seeding vehicles (1/3)...");
+    const batch1 = writeBatch(db);
+    MOCK_VEHICLES.forEach(v => {
+      batch1.set(doc(db, 'vehicles', v.id), v);
+    });
+    await batch1.commit();
+    console.log("Seeded vehicles");
+
+    // Batch 2: Products (Chunked)
+    const chunkSize = 50;
+    for (let i = 0; i < MOCK_PRODUCTS.length; i += chunkSize) {
+      const chunk = MOCK_PRODUCTS.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      const batchNum = Math.floor(i / chunkSize) + 1;
+      const totalBatches = Math.ceil(MOCK_PRODUCTS.length / chunkSize);
+
+      onProgress?.(`Seeding products (Batch ${batchNum}/${totalBatches})...`);
+
+      chunk.forEach(p => {
+        batch.set(doc(db, 'products', p.id), p);
+      });
+      await batch.commit();
+    }
+    console.log("Seeded products");
+
+    // Batch 3: Vendors
+    onProgress?.("Seeding vendors...");
+    const batch3 = writeBatch(db);
+    MOCK_VENDORS.forEach(v => {
+      batch3.set(doc(db, 'vendors', v.id), v);
+    });
+    await batch3.commit();
+    console.log("Seeded vendors");
+  },
+  testConnection: async () => {
+    try {
+      const testDoc = doc(db, '_debug', 'connection_test');
+      await setDoc(testDoc, { timestamp: new Date().toISOString(), platform: 'ios_test' });
+      console.log("Write test success");
+      const snap = await getDoc(testDoc);
+      console.log("Read test success:", snap.exists());
+      return true;
+    } catch (e) {
+      console.error("Connection test failed:", e);
+      throw e;
+    }
+  }
 };

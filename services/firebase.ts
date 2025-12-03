@@ -12,10 +12,41 @@ const firebaseConfig = {
   measurementId: "G-S45E9EM7BR"
 };
 
-// Initialize Firebase
-// Using explicit casting to avoid TypeScript "no exported member" errors if types are mismatched
-const app = (firebaseApp as any).initializeApp(firebaseConfig);
+console.log("Initializing Firebase with config present:", !!firebaseConfig.apiKey);
 
-// Initialize Services
-export const auth = (firebaseAuth as any).getAuth(app);
-export const db = (firestore as any).getFirestore(app);
+// Initialize Firebase
+let app;
+let auth: any;
+let db: any;
+let initError: any = null;
+
+try {
+  // Using explicit casting to avoid TypeScript "no exported member" errors if types are mismatched
+  app = (firebaseApp as any).initializeApp(firebaseConfig);
+
+  // Initialize Services
+  // auth = (firebaseAuth as any).getAuth(app);
+
+  // Use in-memory persistence to rule out keychain/storage issues on iOS
+  auth = (firebaseAuth as any).initializeAuth(app, {
+    persistence: (firebaseAuth as any).inMemoryPersistence
+  });
+
+  // Enable verbose logging
+  (firestore as any).setLogLevel('debug');
+
+  // Initialize with memory cache (no persistence) to rule out corruption
+  db = (firestore as any).initializeFirestore(app, {
+    localCache: (firestore as any).memoryLocalCache()
+  });
+
+  console.log("Firebase initialized successfully with debug logging and memory cache");
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+  initError = error;
+  // Mock objects to prevent crash
+  auth = { currentUser: null };
+  db = {};
+}
+
+export { auth, db, initError };

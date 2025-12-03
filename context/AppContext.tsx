@@ -1,5 +1,6 @@
-
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { CartItem, Product, User, UserRole, Vehicle, Vendor, Order, Address, PaymentMethod, Condition, Origin } from '../types';
 import { api } from '../services/api';
 import { useNotification } from './NotificationContext';
@@ -47,7 +48,7 @@ interface AppContextType extends AppState {
   closeAuthModal: () => void;
   setAuthView: (view: 'login' | 'register') => void;
   placeOrder: (address: Address, paymentMethod: PaymentMethod) => Promise<void>;
-  updateOrderStatus: (orderId: string, status: Order['status'], tracking?: {trackingNumber: string, courier: string}) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: Order['status'], tracking?: { trackingNumber: string, courier: string }) => Promise<void>;
   issueRefund: (orderId: string) => Promise<void>;
   getVendor: (id: string) => Vendor | undefined;
   toggleVendorVerification: (vendorId: string, verified: boolean) => Promise<void>;
@@ -81,27 +82,105 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [orders, setOrders] = useState<Order[]>([]);
   const [vendorOrders, setVendorOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('');
+
+  const checkInternetConnection = async (): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD',
+        signal: controller.signal,
+        mode: 'no-cors'
+      });
+      clearTimeout(id);
+      return true;
+    } catch (e) {
+      console.error("Internet check failed:", e);
+      return false;
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    console.log("Starting fetchData...");
+
+    // Check for early init errors
+    const { initError } = await import('../services/firebase');
+    if (initError) {
+      console.error("EARLY FIREBASE INIT ERROR:", initError);
+      notify('error', 'Firebase failed to initialize. Check logs.');
+      setIsLoading(false);
+      return;
+    }
+
+    const isOnline = await checkInternetConnection();
+    if (!isOnline) {
+      setIsLoading(false);
+      notify('error', 'No internet connection detected. Please check your settings.');
+      return;
+    }
+
+    // Safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn("fetchData timed out! Forcing loading to false.");
+      setIsLoading(false);
+      notify('error', 'Database connection timed out. Firewall or network restriction?');
+    }, 60000);
+
     try {
-      const [fetchedProducts, fetchedVehicles, fetchedVendors] = await Promise.all([
+      console.log("Fetching initial data...");
+
+      // Fetch data in parallel but handle failures individually
+      const [productsResult, vehiclesResult, vendorsResult] = await Promise.allSettled([
         api.getProducts(),
         api.getVehicles(),
         api.getVendors()
       ]);
-      setProducts(fetchedProducts);
-      setVehicles(fetchedVehicles);
-      setVendors(fetchedVendors);
-    } catch (error) {
-      console.error("Failed to fetch initial data", error);
-      notify('error', 'Failed to load initial data');
+
+      if (productsResult.status === 'fulfilled') {
+        console.log("Products fetched:", productsResult.value.length);
+        setProducts(productsResult.value);
+      } else {
+        console.error("Failed to fetch products:", productsResult.reason);
+        notify('error', 'Failed to load products');
+      }
+
+      if (vehiclesResult.status === 'fulfilled') {
+        console.log("Vehicles fetched:", vehiclesResult.value.length);
+        setVehicles(vehiclesResult.value);
+      } else {
+        console.error("Failed to fetch vehicles:", vehiclesResult.reason);
+        notify('error', 'Failed to load vehicles');
+      }
+
+      if (vendorsResult.status === 'fulfilled') {
+        console.log("Vendors fetched:", vendorsResult.value.length);
+        setVendors(vendorsResult.value);
+      } else {
+        console.error("Failed to fetch vendors:", vendorsResult.reason);
+        notify('error', 'Failed to load vendors');
+      }
+
+    } catch (error: any) {
+      console.error("Critical error in fetchData", error);
+      notify('error', `Data load failed: ${error.message}`);
     } finally {
+      clearTimeout(timeoutId);
+      console.log("fetchData finished, setting isLoading to false");
       setIsLoading(false);
     }
   }, [notify]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    console.log("Setting up Auth Listener...");
+    const unsub = onAuthStateChanged(auth, (user: User | null) => {
+      console.log("AUTH STATE CHANGED:", user ? `User ${user.uid}` : "No User");
+    });
+
+    fetchData();
+    return () => unsub();
+  }, [fetchData]);
 
   useEffect(() => {
     if (user.role === 'buyer' && user.id !== 'u1') {
@@ -143,11 +222,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await new Promise(r => setTimeout(r, 500));
     if (role === 'vendor') {
       try {
-          const vUser = await api.loginVendor('demo@vendor.com'); 
-          setUser(vUser);
-          setView('vendor');
-          notify('success', 'Switched to Vendor Mode');
-      } catch(e) { setView('vendor-login'); }
+        const vUser = await api.loginVendor('demo@vendor.com');
+        setUser(vUser);
+        setView('vendor');
+        notify('success', 'Switched to Vendor Mode');
+      } catch (e) { setView('vendor-login'); }
     } else {
       setUser(defaultUser);
       setView('marketplace');
@@ -176,11 +255,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const loggedInUser = await api.loginUser(email, password);
       setUser(loggedInUser);
       if (loggedInUser.role === 'admin') {
-          setView('admin-dashboard');
-          notify('success', `Welcome, Administrator.`);
+        setView('admin-dashboard');
+        notify('success', `Welcome, Administrator.`);
       } else {
-          setView('marketplace');
-          notify('success', `Welcome back, ${loggedInUser.name}!`);
+        setView('marketplace');
+        notify('success', `Welcome back, ${loggedInUser.name}!`);
       }
       setIsAuthModalOpen(false);
     } catch (error: any) {
@@ -218,9 +297,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setView('vendor');
       notify('success', "Registration Successful!");
     } catch (error: any) {
-        notify('error', "Registration Failed: " + error.message);
+      notify('error', "Registration Failed: " + error.message);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [notify]);
 
@@ -242,7 +321,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsLoading(true);
     const newProduct: Product = {
       id: `p${Date.now()}`,
-      vendorId: user.vendorId || 'vnd1', 
+      vendorId: user.vendorId || 'vnd1',
       title: productData.title || 'Untitled',
       price: productData.price || 0,
       sku: `SKU-${Date.now().toString().slice(-6)}`,
@@ -250,20 +329,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       origin: productData.origin || Origin.Japan,
       compatibleVehicles: productData.compatibleVehicles || [],
       category: productData.category || 'General',
-      imageUrl: productData.imageUrl || '', 
+      imageUrl: productData.imageUrl || '',
       stock: 1,
       brand: 'Generic',
-      ...productData 
+      ...productData
     } as Product;
 
     try {
-        await api.addProduct(newProduct);
-        setProducts(prev => [newProduct, ...prev]);
-        notify('success', 'Product listed successfully');
+      await api.addProduct(newProduct);
+      setProducts(prev => [newProduct, ...prev]);
+      notify('success', 'Product listed successfully');
     } catch (e) {
-        notify('error', "Failed to add product");
+      notify('error', "Failed to add product");
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [user, notify]);
 
@@ -294,30 +373,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addVehicle = useCallback(async (data: Partial<Vehicle>) => {
     setIsLoading(true);
     try {
-        const v = { id: `v${Date.now()}`, ...data } as Vehicle;
-        await api.addVehicle(v);
-        setVehicles(prev => [...prev, v]);
-        notify('success', 'Vehicle added');
-    } catch(e) { notify('error', 'Failed to add vehicle'); }
+      const v = { id: `v${Date.now()}`, ...data } as Vehicle;
+      await api.addVehicle(v);
+      setVehicles(prev => [...prev, v]);
+      notify('success', 'Vehicle added');
+    } catch (e) { notify('error', 'Failed to add vehicle'); }
     finally { setIsLoading(false); }
   }, [notify]);
 
   const editVehicle = useCallback(async (id: string, data: Partial<Vehicle>) => {
     setIsLoading(true);
     try {
-        await api.updateVehicle(id, data);
-        setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...data } : v));
-        notify('success', 'Vehicle updated');
-    } catch(e) { notify('error', 'Failed to update vehicle'); }
+      await api.updateVehicle(id, data);
+      setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...data } : v));
+      notify('success', 'Vehicle updated');
+    } catch (e) { notify('error', 'Failed to update vehicle'); }
     finally { setIsLoading(false); }
   }, [notify]);
 
   const removeVehicle = useCallback(async (id: string) => {
     try {
-        await api.deleteVehicle(id);
-        setVehicles(prev => prev.filter(v => v.id !== id));
-        notify('success', 'Vehicle deleted');
-    } catch(e) { notify('error', 'Failed to delete vehicle'); }
+      await api.deleteVehicle(id);
+      setVehicles(prev => prev.filter(v => v.id !== id));
+      notify('success', 'Vehicle deleted');
+    } catch (e) { notify('error', 'Failed to delete vehicle'); }
   }, [notify]);
 
   const manageVehicleBatch = useCallback(async (ops: { creates: Vehicle[], updates: any[], deletes: string[] }) => {
@@ -364,10 +443,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const toggleVendorVerification = useCallback(async (id: string, verified: boolean) => {
     try {
-        await api.toggleVendorVerification(id, verified);
-        setVendors(prev => prev.map(v => v.id === id ? { ...v, verified } : v));
-        notify('success', `Vendor ${verified ? 'Verified' : 'Unverified'}`);
-    } catch(e) { notify('error', 'Failed to update status'); }
+      await api.toggleVendorVerification(id, verified);
+      setVendors(prev => prev.map(v => v.id === id ? { ...v, verified } : v));
+      notify('success', `Vendor ${verified ? 'Verified' : 'Unverified'}`);
+    } catch (e) { notify('error', 'Failed to update status'); }
   }, [notify]);
 
   const openAuthModal = useCallback((mode: 'login' | 'register' = 'login') => {
@@ -380,7 +459,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const res = await api.simulatePayment(total, paymentMethod);
       if (!res.success) throw new Error(res.error);
-      
+
       const newOrder: Order = {
         id: `ORD-${Date.now().toString().slice(-6)}`,
         userId: user.id,
@@ -389,12 +468,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         shippingAddress: address,
         paymentMethod,
         status: 'pending',
-        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+        paymentStatus: paymentMethod === 'cod' ? 'paid' : 'paid', // Assuming paid for non-COD after simulation
         date: new Date().toISOString()
       };
       await api.createOrder(newOrder);
       setLastOrder(newOrder);
-      setCart([]); 
+      setCart([]);
       setView('order-success');
       notify('success', 'Order placed successfully!');
     } catch (error: any) {
@@ -420,10 +499,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [notify]);
 
   const getVendor = useCallback((id: string) => vendors.find(v => v.id === id), [vendors]);
-  const seedDatabase = useCallback(async () => {}, []);
+  const seedDatabase = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Race between the actual seed operation and a 15-second timeout
+      await Promise.race([
+        api.seedDatabase((msg) => setLoadingMessage(msg)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Operation timed out")), 60000))
+      ]);
+
+      notify('success', 'Database seeded successfully! Reloading...');
+      setLoadingMessage('Reloading...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (error: any) {
+      console.error(error);
+      notify('error', error.message || 'Failed to seed database');
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  }, [notify]);
 
   const value = {
-    currentUser: user, cart, products, vehicles, vendors, selectedVehicle, selectedProduct, selectedVendorPublic, view, searchQuery, isAuthModalOpen, authView, authModalMode, lastOrder, orders, vendorOrders, isLoading,
+    currentUser: user, cart, products, vehicles, vendors, selectedVehicle, selectedProduct, selectedVendorPublic, view, searchQuery, isAuthModalOpen, authView, authModalMode, lastOrder, orders, vendorOrders, isLoading, loadingMessage,
     addToCart, removeFromCart, setSelectedVehicle, switchUserRole, setView, viewProduct, viewVendorStore, setSearchQuery, login, vendorLogin, logout, registerVendor, registerBuyer, addProduct, editProduct, removeProduct, updateUserProfile, updateVendorProfile, openAuthModal, closeAuthModal, setAuthView, placeOrder, updateOrderStatus, issueRefund, getVendor, toggleVendorVerification, seedDatabase,
     addVehicle, editVehicle, removeVehicle, manageVehicleBatch
   };
