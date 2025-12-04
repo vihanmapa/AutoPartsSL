@@ -31,7 +31,7 @@ export const Checkout: React.FC = () => {
 
   // Guest protection
   useEffect(() => {
-    if (currentUser.id === 'u1') { // If Guest
+    if (currentUser && currentUser.id === 'u1') { // If Guest
       openAuthModal();
       notify('info', 'Please login to checkout');
     }
@@ -66,7 +66,7 @@ export const Checkout: React.FC = () => {
       if (!address.addressLine1.trim()) return notify('error', 'Address Line 1 is required');
       if (!address.city.trim()) return notify('error', 'City is required');
       if (!address.district.trim()) return notify('error', 'District is required');
-      
+
       setStep(2);
     } else if (step === 2) {
       setStep(3);
@@ -96,7 +96,7 @@ export const Checkout: React.FC = () => {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* LEFT: Steps */}
         <div className="flex-1">
-          
+
           {/* STEP 1: Delivery Address */}
           <div className={`bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden mb-6 ${step === 1 ? 'border-secondary ring-1 ring-secondary' : 'border-slate-200'}`}>
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -108,16 +108,16 @@ export const Checkout: React.FC = () => {
                 <button onClick={() => setStep(1)} className="text-sm text-secondary hover:underline">Edit</button>
               )}
             </div>
-            
+
             {step === 1 ? (
               <div className="p-6 animate-in slide-in-from-top-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Full Name</label>
-                    <input 
-                      type="text" 
-                      name="fullName" 
-                      value={address.fullName} 
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={address.fullName}
                       onChange={handleAddressChange}
                       onClick={() => !address.fullName && fillSampleAddress()}
                       className="w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-secondary focus:border-transparent"
@@ -125,20 +125,20 @@ export const Checkout: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Phone Number</label>
-                    <input 
-                      type="tel" 
-                      name="phone" 
-                      value={address.phone} 
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={address.phone}
                       onChange={handleAddressChange}
                       className="w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-secondary focus:border-transparent"
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-sm font-medium text-slate-700">Address Line 1</label>
-                    <input 
-                      type="text" 
-                      name="addressLine1" 
-                      value={address.addressLine1} 
+                    <input
+                      type="text"
+                      name="addressLine1"
+                      value={address.addressLine1}
                       onChange={handleAddressChange}
                       placeholder="House No, Street Name"
                       className="w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-secondary focus:border-transparent"
@@ -146,19 +146,19 @@ export const Checkout: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">City</label>
-                    <input 
-                      type="text" 
-                      name="city" 
-                      value={address.city} 
+                    <input
+                      type="text"
+                      name="city"
+                      value={address.city}
                       onChange={handleAddressChange}
                       className="w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-secondary focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">District</label>
-                    <select 
-                      name="district" 
-                      value={address.district} 
+                    <select
+                      name="district"
+                      value={address.district}
                       onChange={handleAddressChange}
                       className="w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-secondary focus:border-transparent"
                     >
@@ -200,11 +200,11 @@ export const Checkout: React.FC = () => {
               <div className="p-6 animate-in slide-in-from-top-2">
                 <div className="space-y-3">
                   <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-secondary bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="cod" 
-                      checked={paymentMethod === 'cod'} 
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="cod"
+                      checked={paymentMethod === 'cod'}
                       onChange={() => setPaymentMethod('cod')}
                       className="h-4 w-4 text-secondary focus:ring-secondary border-gray-300"
                     />
@@ -217,16 +217,16 @@ export const Checkout: React.FC = () => {
                   </label>
 
                   <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-secondary bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="card" 
-                      checked={paymentMethod === 'card'} 
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="card"
+                      checked={paymentMethod === 'card'}
                       onChange={() => setPaymentMethod('card')}
                       className="h-4 w-4 text-secondary focus:ring-secondary border-gray-300"
                     />
                     <div className="ml-4 flex-1">
-                       <div className="flex items-center gap-2 font-bold text-slate-900">
+                      <div className="flex items-center gap-2 font-bold text-slate-900">
                         <CreditCard className="h-5 w-5 text-slate-600" /> Credit / Debit Card
                       </div>
                       <p className="text-sm text-slate-500 mt-0.5">Secure payment via Visa or Mastercard.</p>
@@ -237,12 +237,12 @@ export const Checkout: React.FC = () => {
                     </div>
                   </label>
 
-                   <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'koko' ? 'border-secondary bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="koko" 
-                      checked={paymentMethod === 'koko'} 
+                  <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'koko' ? 'border-secondary bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="koko"
+                      checked={paymentMethod === 'koko'}
                       onChange={() => setPaymentMethod('koko')}
                       className="h-4 w-4 text-secondary focus:ring-secondary border-gray-300"
                     />
@@ -260,16 +260,16 @@ export const Checkout: React.FC = () => {
             ) : (
               step > 2 && (
                 <div className="p-6 bg-slate-50/50 text-sm text-slate-600 flex items-center gap-2">
-                   {paymentMethod === 'cod' && <Wallet className="h-4 w-4" />}
-                   {paymentMethod === 'card' && <CreditCard className="h-4 w-4" />}
-                   <span className="font-bold text-slate-900 uppercase">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod}</span>
+                  {paymentMethod === 'cod' && <Wallet className="h-4 w-4" />}
+                  {paymentMethod === 'card' && <CreditCard className="h-4 w-4" />}
+                  <span className="font-bold text-slate-900 uppercase">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod}</span>
                 </div>
               )
             )}
           </div>
-          
-           {/* STEP 3: Review */}
-           {step === 3 && (
+
+          {/* STEP 3: Review */}
+          {step === 3 && (
             <div className="bg-white rounded-xl shadow-sm border border-secondary ring-1 ring-secondary overflow-hidden animate-in slide-in-from-top-2">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h2 className="text-lg font-bold flex items-center gap-3 text-slate-800">
@@ -279,22 +279,22 @@ export const Checkout: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-4 mb-6">
-                   {cart.map(item => (
-                     <div key={item.id} className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                           <div className="h-12 w-12 rounded bg-slate-100 border border-slate-200 overflow-hidden">
-                              <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
-                           </div>
-                           <div>
-                              <p className="font-bold text-slate-900 text-sm">{item.title}</p>
-                              <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
-                           </div>
+                  {cart.map(item => (
+                    <div key={item.id} className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded bg-slate-100 border border-slate-200 overflow-hidden">
+                          <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
                         </div>
-                        <p className="font-medium text-slate-900">LKR {(item.price * item.quantity).toLocaleString()}</p>
-                     </div>
-                   ))}
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{item.title}</p>
+                          <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
+                        </div>
+                      </div>
+                      <p className="font-medium text-slate-900">LKR {(item.price * item.quantity).toLocaleString()}</p>
+                    </div>
+                  ))}
                 </div>
-                
+
                 {paymentError && (
                   <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 text-sm border border-red-200">
                     <AlertTriangle className="h-4 w-4" />
@@ -303,8 +303,8 @@ export const Checkout: React.FC = () => {
                 )}
 
                 <div className="border-t border-slate-100 pt-4 flex justify-end">
-                  <Button 
-                    onClick={handleConfirmOrder} 
+                  <Button
+                    onClick={handleConfirmOrder}
                     className="w-full md:w-auto px-8 py-3 text-lg"
                     disabled={isProcessing}
                   >
@@ -313,7 +313,7 @@ export const Checkout: React.FC = () => {
                 </div>
               </div>
             </div>
-           )}
+          )}
 
         </div>
 
@@ -321,7 +321,7 @@ export const Checkout: React.FC = () => {
         <div className="w-full lg:w-96 shrink-0">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-24">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Order Summary</h3>
-            
+
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal ({cart.reduce((a, b) => a + b.quantity, 0)} items)</span>
@@ -357,7 +357,7 @@ export const OrderSuccess: React.FC = () => {
         <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="h-10 w-10 text-green-600" />
         </div>
-        
+
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Order Confirmed!</h1>
         <p className="text-slate-500 mb-6">
           Thank you for your purchase. Your order <span className="font-bold text-slate-900">#{lastOrder?.id}</span> has been placed successfully.

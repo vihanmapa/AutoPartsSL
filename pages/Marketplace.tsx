@@ -23,11 +23,11 @@ export const Marketplace: React.FC = () => {
         if (!p.compatibleVehicles) return false;
 
         // Check if any variant matches the selected vehicle ID
-        return p.compatibleVehicles.some(cv => cv.vehicleId === selectedVehicle.id);
+        return p.compatibleVehicles.some(cv => cv && cv.vehicleId === selectedVehicle.id);
       });
     }
 
-    return filtered;
+    return filtered.filter(p => p !== null);
   }, [selectedVehicle, searchQuery, products]);
 
   const LoadingSkeleton = () => (
@@ -63,7 +63,7 @@ export const Marketplace: React.FC = () => {
         ) : filteredProducts.length > 0 ? (
           <div className="space-y-4">
             {filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              product && <ProductCard key={product.id} product={product} />
             ))}
           </div>
         ) : (

@@ -6,7 +6,7 @@ import { api } from '../services/api';
 import { useNotification } from './NotificationContext';
 
 interface AppState {
-  currentUser: User;
+  currentUser: User | null;
   cart: CartItem[];
   products: Product[];
   vehicles: Vehicle[];
@@ -23,6 +23,8 @@ interface AppState {
   orders: Order[];
   vendorOrders: Order[];
   isLoading: boolean;
+  loadingMessage: string;
+  isVehicleSelectorOpen: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -47,6 +49,7 @@ interface AppContextType extends AppState {
   openAuthModal: (mode?: 'login' | 'register') => void;
   closeAuthModal: () => void;
   setAuthView: (view: 'login' | 'register') => void;
+  setVehicleSelectorOpen: (isOpen: boolean) => void;
   placeOrder: (address: Address, paymentMethod: PaymentMethod) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status'], tracking?: { trackingNumber: string, courier: string }) => Promise<void>;
   issueRefund: (orderId: string) => Promise<void>;
@@ -81,56 +84,59 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [vendorOrders, setVendorOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isVehicleSelectorOpen, setVehicleSelectorOpen] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Derived or kept for backward compatibility
 
-  const checkInternetConnection = async (): Promise<boolean> => {
+  console.log("AppProvider Render:", { user, authLoading, dataLoading, isLoading });
+
+  // Update main isLoading based on both
+  useEffect(() => {
+    setIsLoading(authLoading || dataLoading);
+  }, [authLoading, dataLoading]);
+
+  const checkInternetConnection = async () => {
     try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch('https://www.google.com/generate_204', {
-        method: 'HEAD',
-        signal: controller.signal,
-        mode: 'no-cors'
-      });
-      clearTimeout(id);
+      if (navigator.onLine === false) return false;
+      // Simple fetch check
+      const online = await Promise.race([
+        fetch('https://www.google.com/favicon.ico', { mode: 'no-cors' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
       return true;
     } catch (e) {
       console.error("Internet check failed:", e);
-      return false;
+      return false; // Assume offline if check fails
     }
   };
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
+    setDataLoading(true);
     console.log("Starting fetchData...");
 
-    // Check for early init errors
-    const { initError } = await import('../services/firebase');
-    if (initError) {
-      console.error("EARLY FIREBASE INIT ERROR:", initError);
-      notify('error', 'Firebase failed to initialize. Check logs.');
-      setIsLoading(false);
-      return;
-    }
-
-    const isOnline = await checkInternetConnection();
-    if (!isOnline) {
-      setIsLoading(false);
-      notify('error', 'No internet connection detected. Please check your settings.');
-      return;
-    }
-
-    // Safety timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.warn("fetchData timed out! Forcing loading to false.");
-      setIsLoading(false);
-      notify('error', 'Database connection timed out. Firewall or network restriction?');
-    }, 60000);
-
     try {
-      console.log("Fetching initial data...");
+      // Check for early init errors
+      console.log("Importing firebase...");
+      const { initError } = await import('../services/firebase');
+      if (initError) {
+        console.error("EARLY FIREBASE INIT ERROR:", initError);
+        notify('error', 'Firebase failed to initialize. Check logs.');
+        setDataLoading(false);
+        return;
+      }
 
+      console.log("Checking internet...");
+      const isOnline = await checkInternetConnection();
+      if (!isOnline) {
+        console.warn("No internet connection.");
+        setDataLoading(false);
+        notify('error', 'No internet connection detected.');
+        return;
+      }
+
+      console.log("Fetching initial data from API...");
       // Fetch data in parallel but handle failures individually
       const [productsResult, vehiclesResult, vendorsResult] = await Promise.allSettled([
         api.getProducts(),
@@ -166,39 +172,61 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error("Critical error in fetchData", error);
       notify('error', `Data load failed: ${error.message}`);
     } finally {
-      clearTimeout(timeoutId);
-      console.log("fetchData finished, setting isLoading to false");
-      setIsLoading(false);
+      console.log("fetchData finished, setting dataLoading to false");
+      setDataLoading(false);
     }
   }, [notify]);
 
   useEffect(() => {
     console.log("Setting up Auth Listener...");
-    const unsub = onAuthStateChanged(auth, (user: User | null) => {
-      console.log("AUTH STATE CHANGED:", user ? `User ${user.uid}` : "No User");
-    });
+    let unsubscribe: any;
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        console.log("Auth state changed:", firebaseUser ? "User logged in" : "User logged out");
+        if (firebaseUser && firebaseUser.uid) {
+          const user: User = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            name: firebaseUser.displayName || 'User',
+            role: 'buyer',
+            phone: firebaseUser.phoneNumber || '',
+          };
+          console.log("Setting user to firebase user:", user);
+          setUser(user);
+        } else {
+          console.log("Setting user to defaultUser:", defaultUser);
+          setUser(defaultUser);
+        }
+        setAuthLoading(false);
+      });
+    } catch (e) {
+      console.error("Failed to setup auth listener:", e);
+      setAuthLoading(false);
+    }
 
     fetchData();
-    return () => unsub();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [fetchData]);
 
   useEffect(() => {
-    if (user.role === 'buyer' && user.id !== 'u1') {
+    if (user && user.role === 'buyer' && user.id !== 'u1') {
       const unsubscribe = api.subscribeToOrders(user.id, (fetchedOrders) => {
         setOrders(fetchedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       });
       return () => unsubscribe();
     } else { setOrders([]); }
-  }, [user.id, user.role]);
+  }, [user]);
 
   useEffect(() => {
-    if (user.role === 'vendor' && user.vendorId) {
+    if (user && user.role === 'vendor' && user.vendorId) {
       const unsubscribe = api.subscribeToVendorOrders(user.vendorId, (fetchedOrders) => {
         setVendorOrders(fetchedOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       });
       return () => unsubscribe();
     } else { setVendorOrders([]); }
-  }, [user.vendorId, user.role]);
+  }, [user]);
 
   const addToCart = useCallback((product: Product) => {
     setCart(prev => {
@@ -498,7 +526,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (e) { notify('error', 'Refund failed'); }
   }, [notify]);
 
-  const getVendor = useCallback((id: string) => vendors.find(v => v.id === id), [vendors]);
+  const getVendor = useCallback((id: string) => vendors.find(v => v && v.id === id), [vendors]);
   const seedDatabase = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -521,7 +549,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [notify]);
 
   const value = {
-    currentUser: user, cart, products, vehicles, vendors, selectedVehicle, selectedProduct, selectedVendorPublic, view, searchQuery, isAuthModalOpen, authView, authModalMode, lastOrder, orders, vendorOrders, isLoading, loadingMessage,
+    currentUser: user, cart, products, vehicles, vendors, selectedVehicle, selectedProduct, selectedVendorPublic, view, searchQuery, isAuthModalOpen, authView, authModalMode, lastOrder, orders, vendorOrders, isLoading,
+    loadingMessage,
+    isVehicleSelectorOpen,
+    setVehicleSelectorOpen,
     addToCart, removeFromCart, setSelectedVehicle, switchUserRole, setView, viewProduct, viewVendorStore, setSearchQuery, login, vendorLogin, logout, registerVendor, registerBuyer, addProduct, editProduct, removeProduct, updateUserProfile, updateVendorProfile, openAuthModal, closeAuthModal, setAuthView, placeOrder, updateOrderStatus, issueRefund, getVendor, toggleVendorVerification, seedDatabase,
     addVehicle, editVehicle, removeVehicle, manageVehicleBatch
   };

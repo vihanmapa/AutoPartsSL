@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
+import { isNativeApp } from '../utils/platform';
 import {
   ArrowLeft,
   ShoppingCart,
@@ -60,7 +62,7 @@ export const ProductDetails: React.FC = () => {
   return (
     <div className="bg-white min-h-screen pb-12">
       {/* Breadcrumb & Header */}
-      <div className="bg-slate-50 border-b border-slate-200 sticky top-0 pt-20 z-30">
+      <div className={`bg-slate-50 border-b border-slate-200 sticky top-0 ${isNativeApp() ? 'pt-20' : 'pt-16'} z-30`}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
             <button onClick={() => setView('marketplace')} className="hover:text-secondary">Home</button>
@@ -123,10 +125,10 @@ export const ProductDetails: React.FC = () => {
 
             {/* Condition & Origin Badges */}
             <div className="flex flex-wrap gap-2">
-              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${selectedProduct.condition === Condition.New
+              <div className={`inline - flex items - center gap - 1 px - 3 py - 1 rounded - full text - sm font - medium border ${selectedProduct.condition === Condition.New
                 ? 'bg-green-50 text-green-700 border-green-200'
                 : 'bg-orange-50 text-orange-700 border-orange-200'
-                }`}>
+                } `}>
                 <Package className="h-3 w-3" />
                 {selectedProduct.condition}
               </div>
@@ -140,14 +142,14 @@ export const ProductDetails: React.FC = () => {
             <div className="border-t border-slate-200 pt-6">
               <div className="flex gap-6 border-b border-slate-200 mb-4">
                 <button
-                  className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'description' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'}`}
+                  className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'description' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
                   onClick={() => setActiveTab('description')}
                 >
                   Description
                   {activeTab === 'description' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-secondary"></div>}
                 </button>
                 <button
-                  className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'specs' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'}`}
+                  className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'specs' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
                   onClick={() => setActiveTab('specs')}
                 >
                   Specifications
@@ -155,7 +157,7 @@ export const ProductDetails: React.FC = () => {
                 </button>
                 {selectedProduct.hazards && selectedProduct.hazards.length > 0 && (
                   <button
-                    className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'hazards' ? 'text-red-600' : 'text-slate-500 hover:text-red-600'}`}
+                    className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'hazards' ? 'text-red-600' : 'text-slate-500 hover:text-red-600'} `}
                     onClick={() => setActiveTab('hazards')}
                   >
                     Hazards

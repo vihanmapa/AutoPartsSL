@@ -19,10 +19,10 @@ export const Profile: React.FC = () => {
             {/* Profile Card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-4 text-center">
                 <div className="h-20 w-20 bg-orange-500 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-3">
-                    {currentUser.name ? currentUser.name.charAt(0) : 'U'}
+                    {currentUser?.name ? currentUser.name.charAt(0) : 'U'}
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">{currentUser.name || 'Guest User'}</h2>
-                <p className="text-sm text-slate-500">{currentUser.email || 'Sign in to view profile'}</p>
+                <h2 className="text-lg font-bold text-slate-900">{currentUser?.name || 'Guest User'}</h2>
+                <p className="text-sm text-slate-500">{currentUser?.email || 'Sign in to view profile'}</p>
 
                 <div className="grid grid-cols-3 gap-4 mt-6 border-t border-slate-100 pt-6">
                     <div className="text-center">

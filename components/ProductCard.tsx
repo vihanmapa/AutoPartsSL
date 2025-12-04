@@ -51,7 +51,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     // Currently AppContext stores `selectedVehicle: Vehicle | null`.
     // We will assume if the vehicle ID matches, it fits (since the user likely filtered by year to get that vehicle).
 
-    return product.compatibleVehicles.some(cv => cv.vehicleId === selectedVehicle.id);
+    // We will assume if the vehicle ID matches, it fits (since the user likely filtered by year to get that vehicle).
+    // Also safeguard against nulls in compatibleVehicles array
+    return product.compatibleVehicles.some(cv => cv && cv.vehicleId === selectedVehicle.id);
   }, [selectedVehicle, product.compatibleVehicles]);
 
   return (

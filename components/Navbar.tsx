@@ -8,8 +8,8 @@ export const Navbar: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const isGuest = currentUser.id === 'u1' && currentUser.role === 'buyer';
-  const isBuyer = currentUser.role === 'buyer';
+  const isGuest = currentUser && currentUser.id === 'u1' && currentUser.role === 'buyer';
+  const isBuyer = currentUser && currentUser.role === 'buyer';
 
   // Close dropdown when clicking outside
   useEffect(() => {

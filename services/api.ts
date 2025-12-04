@@ -1,32 +1,10 @@
 
 import { Product, Vehicle, Vendor, User, Order } from '../types';
 import { MOCK_VEHICLES, MOCK_PRODUCTS, MOCK_VENDORS } from './mockData';
-import { auth, db } from './firebase';
-import * as firestore from 'firebase/firestore';
-import * as firebaseAuth from 'firebase/auth';
-
-const {
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  setDoc,
-  query,
-  where,
-  addDoc,
-  onSnapshot,
-  orderBy,
-  updateDoc,
-  deleteDoc,
-  writeBatch,
-  increment
-} = firestore as any;
-
-const {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile
-} = firebaseAuth as any;
+import { db, auth, storage } from './firebase';
+import { collection, getDocs, getDoc, doc, setDoc, query, where, addDoc, onSnapshot, orderBy, updateDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const mapDoc = (doc: any) => ({ id: doc.id, ...doc.data() });
 
@@ -121,7 +99,7 @@ export const api = {
     await new Promise(resolve => setTimeout(resolve, 1500));
     if (amount > 500000) return { success: false, error: "Transaction limit exceeded." };
     if (method !== 'cod' && Math.random() < 0.1) return { success: false, error: "Payment Gateway Timeout." };
-    return { success: true, transactionId: `TXN-${Date.now()}` };
+    return { success: true, transactionId: `TXN - ${Date.now()} ` };
   },
 
   refundOrder: async (orderId: string): Promise<void> => {
@@ -199,7 +177,7 @@ export const api = {
   registerVendor: async (email: string, password: string, businessName: string, phone: string, location: string): Promise<User> => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: businessName });
-    const vendorId = `vnd_${cred.user.uid}`;
+    const vendorId = `vnd_${cred.user.uid} `;
     const newVendor: Vendor = { id: vendorId, name: businessName, location, rating: 5, verified: false };
     await setDoc(doc(db, 'vendors', vendorId), newVendor);
     const newUser: User = { id: cred.user.uid, name: businessName, email, phone, role: 'vendor', vendorId };
@@ -213,6 +191,12 @@ export const api = {
     const newUser: User = { id: cred.user.uid, email: data.email, name: data.name, phone: data.phone, role: 'buyer' };
     await setDoc(doc(db, 'users', cred.user.uid), newUser);
     return newUser;
+  },
+
+  uploadImage: async (file: Blob, path: string): Promise<string> => {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
   },
 
   addProduct: async (data: Product) => { await setDoc(doc(db, 'products', data.id), data); },
@@ -237,7 +221,7 @@ export const api = {
       const batchNum = Math.floor(i / chunkSize) + 1;
       const totalBatches = Math.ceil(MOCK_PRODUCTS.length / chunkSize);
 
-      onProgress?.(`Seeding products (Batch ${batchNum}/${totalBatches})...`);
+      onProgress?.(`Seeding products(Batch ${batchNum} / ${totalBatches})...`);
 
       chunk.forEach(p => {
         batch.set(doc(db, 'products', p.id), p);

@@ -1,6 +1,7 @@
 import * as firebaseApp from 'firebase/app';
 import * as firebaseAuth from 'firebase/auth';
 import * as firestore from 'firebase/firestore';
+import * as firebaseStorage from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDcGUz-r2g2P3cNe_USxee8syPDigq3fAU",
@@ -45,8 +46,10 @@ try {
   console.error("Firebase initialization failed:", error);
   initError = error;
   // Mock objects to prevent crash
+  // Mock objects to prevent crash
   auth = { currentUser: null };
   db = {};
 }
 
+export const storage = (firebaseStorage as any).getStorage(app);
 export { auth, db, initError };

@@ -8,6 +8,7 @@ import { Search, Filter, Plus, Package, ShoppingCart, BarChart2, Settings, Uploa
 import { VendorBottomNav } from '../components/VendorBottomNav';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { suggestCompatibleVehicles } from '../services/gemini';
+import { api } from '../services/api';
 
 export const VendorDashboard: React.FC = () => {
   const { currentUser, updateUserProfile, updateVendorProfile, vendors, vehicles, products, addProduct, editProduct, removeProduct, vendorOrders, updateOrderStatus, issueRefund, isLoading, switchUserRole } = useApp();
@@ -46,7 +47,7 @@ export const VendorDashboard: React.FC = () => {
 
   // Derived State: Filter global products for this vendor
   const vendorProducts = useMemo(() => {
-    if (!currentUser.vendorId) return [];
+    if (!currentUser || !currentUser.vendorId) return [];
     let filtered = products.filter(p => p.vendorId === currentUser.vendorId);
 
     // Apply Search
@@ -264,28 +265,28 @@ export const VendorDashboard: React.FC = () => {
   }, [pendingVehicle, vehicles]);
 
 
-  // Generic Image Handler with Compression
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Generic Image Handler with Compression and Upload
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Basic validation
       if (!file.type.startsWith('image/')) {
         notify('error', "Please upload a valid image file.");
         return;
       }
 
+      setIsUploading(true);
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          // Resize logic using Canvas
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
 
-          // Max dimensions
           const MAX_WIDTH = 1024;
           const MAX_HEIGHT = 1024;
 
@@ -308,10 +309,21 @@ export const VendorDashboard: React.FC = () => {
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
 
-          // Compress to JPEG 0.7 quality
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          setter(dataUrl);
-          notify('success', "Image uploaded and optimized!");
+          canvas.toBlob(async (blob) => {
+            if (blob) {
+              try {
+                const filename = `images/${Date.now()}_${file.name}`;
+                const url = await api.uploadImage(blob, filename);
+                setter(url);
+                notify('success', "Image uploaded successfully!");
+              } catch (error) {
+                console.error("Upload failed:", error);
+                notify('error', "Image upload failed.");
+              } finally {
+                setIsUploading(false);
+              }
+            }
+          }, 'image/jpeg', 0.7);
         };
         img.src = event.target?.result as string;
       };
@@ -1052,10 +1064,20 @@ export const VendorDashboard: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
-                <Button type="button" variant="outline" onClick={() => { resetForm(); setActiveTab('listings'); }}>Cancel</Button>
-                <Button type="submit" variant="secondary" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : (editingProductId ? 'Save Changes' : 'Publish Product')}
+              <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-slate-100">
+                <Button variant="secondary" onClick={() => { resetForm(); setActiveTab('listings'); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" /> Save Product
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

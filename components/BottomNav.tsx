@@ -1,6 +1,7 @@
 import React from 'react';
 import { Home, Grid, Camera, ShoppingCart, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { isNativeApp } from '../utils/platform';
 
 export const BottomNav: React.FC = () => {
     const { view, setView, cart } = useApp();
@@ -14,7 +15,7 @@ export const BottomNav: React.FC = () => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
+        <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 ${isNativeApp() ? 'pb-safe' : 'pb-0'} z-50`}>
             <div className="flex justify-between items-end px-2 py-2">
                 {navItems.map((item) => {
                     const isActive = view === item.id;

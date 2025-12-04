@@ -2,15 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { Car, Search, X, ChevronRight, ArrowLeft, Check, Database, Wifi } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { isNativeApp } from '../utils/platform';
 import { Button } from './ui/Button';
 import { Vehicle } from '../types';
 
 type Step = 'MAKE' | 'MODEL' | 'YEAR' | 'VARIANT';
 
 export const VehicleSelector: React.FC = () => {
-  const { selectedVehicle, setSelectedVehicle, vehicles, isLoading, seedDatabase } = useApp();
+  const { selectedVehicle, setSelectedVehicle, vehicles, isLoading, seedDatabase, isVehicleSelectorOpen, setVehicleSelectorOpen } = useApp();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = isVehicleSelectorOpen;
+  const setIsOpen = setVehicleSelectorOpen;
   const [step, setStep] = useState<Step>('MAKE');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -23,9 +25,10 @@ export const VehicleSelector: React.FC = () => {
 
   // 1. Unique Makes
   const availableMakes = useMemo(() => {
-    const makes = Array.from(new Set(vehicles.map(v => v.make))).sort();
+    const validVehicles = vehicles.filter(v => v && v.make);
+    const makes = Array.from(new Set(validVehicles.map(v => v.make))).sort();
     if (!searchQuery) return makes;
-    return makes.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
+    return makes.filter((m: string) => m.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [vehicles, searchQuery]);
 
   // 2. Models for selected Make
@@ -37,13 +40,13 @@ export const VehicleSelector: React.FC = () => {
         .map(v => v.model)
     )).sort();
     if (!searchQuery) return models;
-    return models.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
+    return models.filter((m: string) => m.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [vehicles, tempMake, searchQuery]);
 
   // 3. Years for selected Make + Model
   const availableYears = useMemo(() => {
     if (!tempMake || !tempModel) return [];
-    const relevantVehicles = vehicles.filter(v => v.make === tempMake && v.model === tempModel);
+    const relevantVehicles = vehicles.filter(v => v && v.make === tempMake && v.model === tempModel);
 
     const yearsSet = new Set<number>();
     relevantVehicles.forEach(v => {
@@ -244,7 +247,7 @@ export const VehicleSelector: React.FC = () => {
       {isOpen && (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in slide-in-from-bottom duration-300">
           {/* Header */}
-          <div className="px-4 py-4 pt-24 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
+          <div className={`px-4 py-4 ${isNativeApp() ? 'pt-24' : 'pt-4'} border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10`}>
             <div className="flex items-center gap-4">
               <button onClick={step === 'MAKE' ? handleClose : goBack} className="p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-full">
                 {step === 'MAKE' ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
