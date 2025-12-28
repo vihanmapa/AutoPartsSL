@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
 import { isNativeApp } from '../utils/platform';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   ArrowLeft,
   ShoppingCart,
@@ -20,7 +21,7 @@ import {
 import { Condition } from '../types';
 
 export const ProductDetails: React.FC = () => {
-  const { selectedProduct, setView, addToCart, getVendor, viewVendorStore } = useApp();
+  const { selectedProduct, setView, addToCart, getVendor, viewVendorStore, setSelectedCategory } = useApp();
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'hazards'>('description');
   const [postcode, setPostcode] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState<string | null>(null);
@@ -64,16 +65,22 @@ export const ProductDetails: React.FC = () => {
       {/* Breadcrumb & Header */}
       <div className={`bg-slate-50 border-b border-slate-200 sticky top-0 ${isNativeApp() ? 'pt-20' : 'pt-16'} z-30`}>
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
-            <button onClick={() => setView('marketplace')} className="hover:text-secondary">Home</button>
-            <span>/</span>
-            <span className="hover:text-secondary cursor-pointer">{selectedProduct.category}</span>
-            <span>/</span>
-            <span className="text-slate-900 font-medium truncate max-w-[200px]">{selectedProduct.title}</span>
-          </div>
+          <Breadcrumbs
+            onHomeClick={() => setView('marketplace')}
+            items={[
+              {
+                label: selectedProduct.category,
+                onClick: () => {
+                  setSelectedCategory(selectedProduct.category);
+                  setView('marketplace');
+                }
+              },
+              { label: selectedProduct.title, active: true }
+            ]}
+          />
           <button
             onClick={() => setView('marketplace')}
-            className="flex items-center gap-1 text-secondary font-medium text-sm hover:underline"
+            className="flex items-center gap-1 text-secondary font-medium text-sm hover:underline mt-2"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Results
           </button>
@@ -125,7 +132,7 @@ export const ProductDetails: React.FC = () => {
 
             {/* Condition & Origin Badges */}
             <div className="flex flex-wrap gap-2">
-              <div className={`inline - flex items - center gap - 1 px - 3 py - 1 rounded - full text - sm font - medium border ${selectedProduct.condition === Condition.New
+              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${selectedProduct.condition === Condition.New
                 ? 'bg-green-50 text-green-700 border-green-200'
                 : 'bg-orange-50 text-orange-700 border-orange-200'
                 } `}>
@@ -142,14 +149,14 @@ export const ProductDetails: React.FC = () => {
             <div className="border-t border-slate-200 pt-6">
               <div className="flex gap-6 border-b border-slate-200 mb-4">
                 <button
-                  className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'description' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
+                  className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'description' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
                   onClick={() => setActiveTab('description')}
                 >
                   Description
                   {activeTab === 'description' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-secondary"></div>}
                 </button>
                 <button
-                  className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'specs' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
+                  className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'specs' ? 'text-secondary' : 'text-slate-500 hover:text-slate-800'} `}
                   onClick={() => setActiveTab('specs')}
                 >
                   Specifications
@@ -157,7 +164,7 @@ export const ProductDetails: React.FC = () => {
                 </button>
                 {selectedProduct.hazards && selectedProduct.hazards.length > 0 && (
                   <button
-                    className={`pb - 2 font - medium text - sm transition - colors relative ${activeTab === 'hazards' ? 'text-red-600' : 'text-slate-500 hover:text-red-600'} `}
+                    className={`pb-2 font-medium text-sm transition-colors relative ${activeTab === 'hazards' ? 'text-red-600' : 'text-slate-500 hover:text-red-600'} `}
                     onClick={() => setActiveTab('hazards')}
                   >
                     Hazards

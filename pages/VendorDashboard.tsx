@@ -1,17 +1,313 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNotification } from '../context/NotificationContext';
-import { Product, Condition, Origin, Vendor, Order, CartItem, Vehicle, CompatibleVariant } from '../types';
+import { Product, Condition, Origin, Vendor, Order, CartItem, Vehicle, CompatibleVariant, Category } from '../types';
 import { Button } from '../components/ui/Button';
-import { Search, Filter, Plus, Package, ShoppingCart, BarChart2, Settings, Upload, X, Check, AlertCircle, ChevronRight, Store, MapPin, Truck, ClipboardList, Loader2, Sparkles, Car, ChevronLeft, Menu, Bell, LogOut, Home, Pencil, Trash2, Camera, Save, Image as ImageIcon } from 'lucide-react';
+import { Camera, Package, DollarSign, Tag, Archive, Edit, Trash2, Plus, Search, Filter, Loader2, Save, X, ChevronRight, ChevronLeft, Truck, AlertCircle, ClipboardList, PenTool as Pencil, ArrowRight, Upload, Sparkles, Car, Store, Settings, Menu, Bell, LogOut, Home, Image as ImageIcon, BarChart2, MapPin, ShoppingCart, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { VendorBottomNav } from '../components/VendorBottomNav';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { suggestCompatibleVehicles } from '../services/gemini';
 import { api } from '../services/api';
+import { FitmentCancellationModal } from '../components/FitmentCancellationModal';
+
+const VinBadge = ({
+  vin,
+  status = 'pending',
+  orderStatus,
+  cancellationReason,
+  onVerify
+}: {
+  vin: string;
+  status?: 'pending' | 'verified' | 'failed';
+  orderStatus?: string;
+  cancellationReason?: string;
+  onVerify: (status: 'verified' | 'failed') => void;
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(vin);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (orderStatus === 'refund_pending' || orderStatus === 'refunded') {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-3">
+        <div className="flex items-center gap-2 mb-2">
+          <X className="h-5 w-5 text-red-600" />
+          <span className="font-bold text-red-800">Verification Failed</span>
+        </div>
+        <p className="text-sm text-red-700 font-medium">
+          Refund process initiated. Please contact admin for any clarifications.
+        </p>
+        {cancellationReason && (
+          <p className="text-xs text-red-600 mt-1 italic">
+            Reason: {cancellationReason}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (status === 'verified') {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3 flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-xs font-bold text-green-700 uppercase tracking-wider flex items-center gap-1">
+              <Check className="h-3 w-3" /> Fitment Verified
+            </span>
+          </div>
+          <div className="font-mono text-lg font-bold text-slate-900 tracking-widest">{vin}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3 flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1">
+              <X className="h-3 w-3" /> Fitment Issue
+            </span>
+          </div>
+          <div className="font-mono text-lg font-bold text-slate-900 tracking-widest">{vin}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" /> Verification Required
+            </span>
+          </div>
+          <div className="font-mono text-xl font-bold text-slate-900 tracking-widest bg-white px-2 py-1 rounded border border-amber-100 inline-block">
+            {vin}
+          </div>
+        </div>
+
+        <button
+          onClick={handleCopy}
+          className={`px-3 py-2 text-sm font-medium rounded transition-colors flex items-center justify-center gap-2 ${copied
+            ? "bg-green-100 text-green-700 border border-green-200"
+            : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+            }`}
+        >
+          {copied ? <>✅ Copied</> : <>📋 Copy</>}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="outline"
+          className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800"
+          onClick={() => onVerify('verified')}
+        >
+          <Check className="h-4 w-4 mr-2" /> Fits
+        </Button>
+        <Button
+          variant="outline"
+          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+          onClick={() => onVerify('failed')}
+        >
+          <X className="h-4 w-4 mr-2" /> Doesn't Fit
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const CollapsibleOrderRow = ({
+  order,
+  currentUser,
+  handleStatusChange,
+  setSelectedOrderId,
+  setTrackingModalOpen,
+  handleConfirmCancellation,
+  handleVerifyFitment
+}: {
+  order: Order;
+  currentUser: Vendor | any;
+  handleStatusChange: (id: string, status: Order['status']) => void;
+  setSelectedOrderId: (id: string) => void;
+  setTrackingModalOpen: (open: boolean) => void;
+  handleConfirmCancellation: (reason: 'stock_issue' | 'other', details?: string) => void;
+  handleVerifyFitment: (orderId: string, vin: string, itemName: string, status: 'verified' | 'failed') => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Filter items that belong to THIS vendor
+  const myItems = order.items.filter(i => i.vendorId === currentUser.vendorId);
+  const myTotal = myItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-200">
+      {/* Header - Always Visible */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`px-6 py-4 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-slate-50 transition-colors ${isOpen ? 'bg-slate-50 border-b border-slate-100' : ''}`}
+      >
+        <div className="col-span-1 flex items-center justify-center text-slate-400">
+          {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        </div>
+
+        <div className="col-span-3">
+          <p className="text-xs text-slate-500 uppercase font-bold">Order ID</p>
+          <p className="text-sm font-bold text-slate-900">{order.id}</p>
+        </div>
+        <div className="col-span-2">
+          <p className="text-xs text-slate-500 uppercase font-bold">Date</p>
+          <p className="text-sm text-slate-700">{new Date(order.date).toLocaleDateString()}</p>
+        </div>
+        <div className="col-span-3">
+          <p className="text-xs text-slate-500 uppercase font-bold">Status</p>
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
+              ${order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+              order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                order.status === 'verified' ? 'bg-teal-100 text-teal-800' :
+                  order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      order.status === 'refund_pending' ? 'bg-orange-100 text-orange-800' :
+                        order.status === 'refunded' ? 'bg-green-100 text-green-800' :
+                          'bg-slate-100 text-slate-800'}`}>
+            {order.status.replace('_', ' ')}
+          </span>
+        </div>
+        <div className="col-span-3 text-right">
+          <p className="text-xs text-slate-500 uppercase font-bold">Revenue</p>
+          <p className="text-sm font-bold text-green-600">LKR {myTotal.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {isOpen && (
+        <div className="p-0 animate-in slide-in-from-top-2 duration-200">
+          <div className="bg-slate-50/50 px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-end">
+            {/* Actions Toolbar */}
+            {order.status === 'pending' && (
+              <Button size="sm" onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'processing'); }}>
+                Mark Processing
+              </Button>
+            )}
+            {(order.status === 'processing' || order.status === 'verified') && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedOrderId(order.id);
+                  setTrackingModalOpen(true);
+                }}
+                disabled={order.vehicleDetails?.vinNumber ? order.vehicleDetails.verificationStatus !== 'verified' : false}
+                className={order.vehicleDetails?.vinNumber && order.vehicleDetails.verificationStatus !== 'verified' ? 'opacity-50 cursor-not-allowed' : ''}
+              >
+                <Truck className="h-3 w-3 mr-1" /> Ship Order
+              </Button>
+            )}
+            {order.status === 'shipped' && (
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                  <Truck className="h-3 w-3" /> Shipped
+                </span>
+                <Button size="sm" onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'delivered'); }}>
+                  <Check className="h-3 w-3 mr-1" /> Mark Delivered
+                </Button>
+              </div>
+            )}
+            {(order.status === 'processing' || order.status === 'pending' || order.status === 'verified') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const reason = prompt("Enter cancellation reason (e.g. Out of Stock):");
+                  if (reason) {
+                    handleConfirmCancellation('stock_issue', reason);
+                  }
+                }}
+                className="text-xs text-red-500 hover:underline px-2"
+              >
+                Cancel & Refund
+              </button>
+            )}
+          </div>
+
+          <div className="p-6">
+            {order.vehicleDetails?.vinNumber && (
+              <div className="mb-4">
+                <VinBadge
+                  vin={order.vehicleDetails.vinNumber}
+                  status={order.vehicleDetails.verificationStatus}
+                  orderStatus={order.status}
+                  cancellationReason={order.cancellationDetails?.reason === 'vin_mismatch' ? 'Does not fit vehicle' : order.cancellationDetails?.description || order.cancellationReason}
+                  onVerify={(status) => handleVerifyFitment(
+                    order.id,
+                    order.vehicleDetails!.vinNumber,
+                    order.items.map(i => i.title).join(', '),
+                    status
+                  )}
+                />
+                <div className="flex gap-2 mt-2 mb-2 text-sm pl-1">
+                  <a
+                    href={`https://www.realoem.com/bmw/enUS/select?vin=${order.vehicleDetails.vinNumber}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    Check on RealOEM (BMW)
+                  </a>
+                  <span className="text-slate-300">|</span>
+                  <a
+                    href={`https://partsfan.com/search/${order.vehicleDetails.vinNumber}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    Check on PartsFan (Toyota)
+                  </a>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 mb-2 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-slate-400" /> Shipping Details
+                </h4>
+                <p className="text-sm text-slate-600">{order.shippingAddress.fullName}</p>
+                <p className="text-sm text-slate-600">{order.shippingAddress.addressLine1}</p>
+                <p className="text-sm text-slate-600">{order.shippingAddress.city}, {order.shippingAddress.district}</p>
+                <p className="text-sm text-slate-600">{order.shippingAddress.phone}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-slate-400" /> Items Ordered
+                </h4>
+                <ul className="space-y-2">
+                  {myItems.map((item, idx) => (
+                    <li key={idx} className="flex justify-between text-sm">
+                      <span className="text-slate-700">{item.quantity} x {item.title}</span>
+                      <span className="font-medium">LKR {(item.price * item.quantity).toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const VendorDashboard: React.FC = () => {
-  const { currentUser, updateUserProfile, updateVendorProfile, vendors, vehicles, products, addProduct, editProduct, removeProduct, vendorOrders, updateOrderStatus, issueRefund, isLoading, switchUserRole } = useApp();
+  const { currentUser, updateUserProfile, updateVendorProfile, vendors, vehicles, products, addProduct, editProduct, removeProduct, vendorOrders, updateOrderStatus, issueRefund, verifyOrderFitment, cancelOrder, isLoading, switchUserRole, categories, logout } = useApp();
   const { notify } = useNotification();
   const [activeTab, setActiveTab] = useState('listings');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,6 +316,10 @@ export const VendorDashboard: React.FC = () => {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Fitment Cancellation State
+  const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
+  const [selectedOrderForCancellation, setSelectedOrderForCancellation] = useState<{ id: string, vin: string, vehicleName: string } | null>(null);
 
   // Inventory Management State
   const [inventorySearch, setInventorySearch] = useState('');
@@ -377,7 +677,7 @@ export const VendorDashboard: React.FC = () => {
       condition: Condition.New,
       origin: Origin.Japan,
       compatibleVehicles: [],
-      category: 'General',
+      category: categories.length > 0 ? categories[0].name : 'General',
       imageUrl: '',
       stock: 1
     });
@@ -385,6 +685,44 @@ export const VendorDashboard: React.FC = () => {
     setIsAddingProduct(false);
     setVehicleSearchTerm('');
     setPendingVehicle(null);
+  };
+
+  // Build hierarchical category options
+  const categoryOptions = useMemo(() => {
+    const options: { id: string; name: string; level: number }[] = [];
+
+    const traverse = (parentId: string | undefined, level: number) => {
+      const children = categories.filter(c => c.parentId === parentId || (parentId === undefined && !c.parentId));
+      children.forEach(c => {
+        options.push({ id: c.id, name: c.name, level });
+        traverse(c.id, level + 1);
+      });
+    };
+    traverse(undefined, 0);
+    return options;
+  }, [categories]);
+
+  const handleVerifyFitment = (orderId: string, vin: string, vehicleName: string, status: 'verified' | 'failed') => {
+    if (status === 'verified') {
+      verifyOrderFitment(orderId, 'verified');
+    } else {
+      setSelectedOrderForCancellation({ id: orderId, vin, vehicleName });
+      setCancellationModalOpen(true);
+    }
+  };
+
+  const handleConfirmCancellation = async (reason: string, description: string) => {
+    notify('info', 'Processing cancellation...');
+    console.log("Dashboard: handleConfirmCancellation", { reason, description, selectedOrderForCancellation });
+    if (selectedOrderForCancellation) {
+      await cancelOrder(selectedOrderForCancellation.id, reason, description);
+      console.log("Dashboard: cancelOrder completed");
+      setCancellationModalOpen(false);
+      setSelectedOrderForCancellation(null);
+    } else {
+      console.error("Dashboard: No selected order for cancellation");
+      notify('error', 'Error: No order selected');
+    }
   };
 
   const initiateEdit = (product: Product) => {
@@ -515,6 +853,12 @@ export const VendorDashboard: React.FC = () => {
           <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
             <Settings className="h-5 w-5" /> Settings
           </button>
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-slate-800 transition-colors mt-2"
+          >
+            <LogOut className="h-5 w-5" /> Exit Vendor Mode
+          </button>
         </div>
       </aside>
 
@@ -522,7 +866,7 @@ export const VendorDashboard: React.FC = () => {
       <main className="flex-1 w-full md:ml-64 p-4 md:p-8 pb-24 md:pb-8 overflow-x-hidden">
 
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between mb-6 pt-12 px-2">
+        <div className="md:hidden flex items-center justify-between mb-6 py-4 px-4 sticky top-0 z-40 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
           <div className="flex items-center gap-3">
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 -ml-2 text-slate-600">
               <Menu className="h-6 w-6" />
@@ -571,7 +915,7 @@ export const VendorDashboard: React.FC = () => {
                 </nav>
               </div>
               <div className="p-4 border-t border-slate-100">
-                <button onClick={() => switchUserRole('buyer')} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                <button onClick={() => logout()} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
                   <LogOut className="h-5 w-5" /> Exit Vendor Mode
                 </button>
               </div>
@@ -917,14 +1261,23 @@ export const VendorDashboard: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">Category</label>
-                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary bg-white text-slate-900">
-                    <option>General</option>
-                    <option>Engine & Drivetrain</option>
-                    <option>Body Parts</option>
-                    <option>Lighting</option>
-                    <option>Suspension</option>
-                    <option>Brakes</option>
-                    <option>Interior</option>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary bg-white text-slate-900"
+                  >
+                    <option value="" disabled>Select Category</option>
+                    {categoryOptions.length > 0 ? (
+                      categoryOptions.map(cat => (
+                        <option key={cat.id} value={cat.name}>
+                          {/* Using non-breaking spaces for indentation in select */}
+                          {'\u00A0\u00A0\u00A0'.repeat(cat.level)}{cat.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option>General</option>
+                    )}
                   </select>
                 </div>
 
@@ -1096,87 +1449,19 @@ export const VendorDashboard: React.FC = () => {
                 <p className="text-slate-500">When you receive an order, it will appear here.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {vendorOrders.map(order => {
-                  // Filter items that belong to THIS vendor
-                  const myItems = order.items.filter(i => i.vendorId === currentUser.vendorId);
-                  const myTotal = myItems.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-
-                  return (
-                    <div key={order.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                      <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-4">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="text-xs text-slate-500 uppercase font-bold">Order ID</p>
-                            <p className="text-sm font-bold text-slate-900">{order.id}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 uppercase font-bold">Date</p>
-                            <p className="text-sm text-slate-700">{new Date(order.date).toLocaleDateString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 uppercase font-bold">Your Revenue</p>
-                            <p className="text-sm font-bold text-green-600">LKR {myTotal.toLocaleString()}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {order.status === 'pending' && (
-                            <Button size="sm" onClick={() => handleStatusChange(order.id, 'processing')}>
-                              Mark Processing
-                            </Button>
-                          )}
-                          {order.status === 'processing' && (
-                            <Button size="sm" variant="secondary" onClick={() => handleStatusChange(order.id, 'shipped')}>
-                              <Truck className="h-3 w-3 mr-1" /> Ship Order
-                            </Button>
-                          )}
-                          {order.status === 'shipped' && (
-                            <span className="flex items-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                              <Truck className="h-3 w-3" /> Shipped
-                            </span>
-                          )}
-
-                          {order.status !== 'cancelled' && order.status !== 'delivered' && (
-                            <button
-                              onClick={() => issueRefund(order.id)}
-                              className="text-xs text-red-500 hover:underline px-2"
-                            >
-                              Issue Refund
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                          <div>
-                            <h4 className="font-bold text-sm text-slate-900 mb-2 flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-slate-400" /> Shipping Details
-                            </h4>
-                            <p className="text-sm text-slate-600">{order.shippingAddress.fullName}</p>
-                            <p className="text-sm text-slate-600">{order.shippingAddress.addressLine1}</p>
-                            <p className="text-sm text-slate-600">{order.shippingAddress.city}, {order.shippingAddress.district}</p>
-                            <p className="text-sm text-slate-600">{order.shippingAddress.phone}</p>
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-sm text-slate-900 mb-2 flex items-center gap-2">
-                              <Package className="h-4 w-4 text-slate-400" /> Items Ordered
-                            </h4>
-                            <ul className="space-y-2">
-                              {myItems.map((item, idx) => (
-                                <li key={idx} className="flex justify-between text-sm">
-                                  <span className="text-slate-700">{item.quantity} x {item.title}</span>
-                                  <span className="font-medium">LKR {(item.price * item.quantity).toLocaleString()}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-1 gap-4">
+                {vendorOrders.map(order => (
+                  <CollapsibleOrderRow
+                    key={order.id}
+                    order={order}
+                    currentUser={currentUser}
+                    handleStatusChange={handleStatusChange}
+                    setSelectedOrderId={setSelectedOrderId}
+                    setTrackingModalOpen={setTrackingModalOpen}
+                    handleConfirmCancellation={handleConfirmCancellation}
+                    handleVerifyFitment={handleVerifyFitment}
+                  />
+                ))}
               </div>
             )}
 
@@ -1341,6 +1626,18 @@ export const VendorDashboard: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Fitment Cancellation Modal */}
+      {selectedOrderForCancellation && (
+        <FitmentCancellationModal
+          isOpen={cancellationModalOpen}
+          onClose={() => setCancellationModalOpen(false)}
+          onConfirm={handleConfirmCancellation}
+          orderId={selectedOrderForCancellation.id}
+          vin={selectedOrderForCancellation.vin}
+          vehicleName={selectedOrderForCancellation.vehicleName}
+        />
+      )}
 
       <VendorBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>

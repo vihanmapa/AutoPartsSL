@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Grid, Camera, ShoppingCart, User } from 'lucide-react';
+import { Home, Grid, Camera, ShoppingCart, Car } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isNativeApp } from '../utils/platform';
 
@@ -10,8 +10,8 @@ export const BottomNav: React.FC = () => {
         { id: 'marketplace', icon: Home, label: 'Home' },
         { id: 'categories', icon: Grid, label: 'Categories' },
         { id: 'analyze', icon: Camera, label: 'AI Scan', isPrimary: true },
+        { id: 'garage', icon: Car, label: 'My Garage' },
         { id: 'cart', icon: ShoppingCart, label: 'Cart', badge: cart.length },
-        { id: 'my-account', icon: User, label: 'You' },
     ];
 
     return (

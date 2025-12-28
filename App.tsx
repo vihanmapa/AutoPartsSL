@@ -5,6 +5,7 @@ import { NotificationProvider, useNotification } from './context/NotificationCon
 import { ToastContainer } from './components/ui/Toast';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
+import { VehicleWizardModal } from './components/VehicleWizard/VehicleWizardModal';
 import { Marketplace } from './pages/Marketplace';
 import { VendorDashboard } from './pages/VendorDashboard';
 import { ProductDetails } from './pages/ProductDetails';
@@ -13,7 +14,13 @@ import { VendorStore } from './pages/VendorStore';
 import { ImageAnalysis } from './pages/ImageAnalysis';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Categories } from './pages/Categories';
-import { Profile } from './pages/Profile';
+import { Profile, ProfileDetails } from './pages/Profile';
+import { Garage } from './pages/Garage';
+import { ContactUs } from './pages/ContactUs';
+import { FAQ } from './pages/FAQ';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsAndConditions } from './pages/TermsAndConditions';
+import { Feedback } from './pages/Feedback';
 import { MobileHeader } from './components/MobileHeader';
 import { BottomNav } from './components/BottomNav';
 import { ShoppingCart as CartIcon, ArrowLeft, Lock, Mail, Store, MapPin, Phone, CheckCircle2, ShieldCheck, User, ShoppingBag, Bell, Camera, Facebook, AlertCircle, Package, ChevronRight, Truck, Clock, X } from 'lucide-react';
@@ -422,9 +429,13 @@ const AppContent: React.FC = () => {
 
   if (isLoading && view === 'marketplace') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mb-4"></div>
-        <p className="text-slate-500 animate-pulse">{loadingMessage || 'Loading AutoPartsSL...'}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-secondary/20 blur-xl rounded-full"></div>
+          <Package className="h-16 w-16 text-secondary relative z-10 animate-bounce" />
+        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mb-4"></div>
+        <p className="text-slate-400 font-medium animate-pulse">{loadingMessage || 'Loading AutoPartsSL...'}</p>
       </div>
     );
   }
@@ -439,7 +450,7 @@ const AppContent: React.FC = () => {
     }
   }
 
-  const isBuyerView = ['marketplace', 'categories', 'my-account', 'cart', 'product-details', 'my-purchase', 'analyze'].includes(view);
+  const isBuyerView = ['marketplace', 'categories', 'my-account', 'cart', 'product-details', 'my-purchase', 'profile-details', 'analyze', 'garage', 'contact-us', 'faq', 'privacy-policy', 'terms', 'feedback', 'checkout', 'order-success'].includes(view);
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
@@ -450,6 +461,7 @@ const AppContent: React.FC = () => {
       {!isBuyerView && view !== 'vendor' && <Navbar />}
 
       <AuthModal />
+      <VehicleWizardModal />
       <ToastContainer />
 
       <main className="flex-grow">
@@ -462,8 +474,15 @@ const AppContent: React.FC = () => {
         {view === 'vendor' && <VendorDashboard />}
         {view === 'vendor-store' && <VendorStore />}
         {view === 'my-account' && <Profile />}
+        {view === 'profile-details' && <ProfileDetails />}
         {view === 'my-purchase' && <MyPurchaseView />}
         {view === 'analyze' && <ImageAnalysis />}
+        {view === 'garage' && <Garage />}
+        {view === 'contact-us' && <ContactUs />}
+        {view === 'faq' && <FAQ />}
+        {view === 'privacy-policy' && <PrivacyPolicy />}
+        {view === 'terms' && <TermsAndConditions />}
+        {view === 'feedback' && <Feedback />}
       </main>
 
       {/* Bottom Nav for Buyer Views */}
@@ -497,15 +516,12 @@ const AppContent: React.FC = () => {
 };
 
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { DebugLogger } from './components/DebugLogger';
-
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <NotificationProvider>
         <AppProvider>
           <AppContent />
-          <DebugLogger />
         </AppProvider>
       </NotificationProvider>
     </ErrorBoundary>

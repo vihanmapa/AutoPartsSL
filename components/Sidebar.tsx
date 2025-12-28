@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ChevronRight, Car, Grid, User, LogOut, LogIn, ShoppingBag } from 'lucide-react';
+import { X, ChevronRight, Car, Grid, User, LogOut, LogIn, ShoppingBag, Store } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isNativeApp } from '../utils/platform';
 

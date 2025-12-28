@@ -28,9 +28,9 @@ try {
   // Initialize Services
   // auth = (firebaseAuth as any).getAuth(app);
 
-  // Use in-memory persistence to rule out keychain/storage issues on iOS
+  // Use browser local persistence for sessions that survive refresh
   auth = (firebaseAuth as any).initializeAuth(app, {
-    persistence: (firebaseAuth as any).inMemoryPersistence
+    persistence: (firebaseAuth as any).browserLocalPersistence
   });
 
   // Enable verbose logging

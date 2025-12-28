@@ -2,25 +2,28 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNotification } from '../context/NotificationContext';
-import { analyzeVehicleImage, DamageAnalysisResult } from '../services/gemini';
+import { DamageAnalysisResult } from '../types';
+import { analyzeVehicleImage } from '../services/gemini';
 import { Button } from '../components/ui/Button';
 import { Camera, Upload, Search, AlertTriangle, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 
 export const ImageAnalysis: React.FC = () => {
-  const { setView, setSearchQuery } = useApp();
+  const { setView, setSearchQuery, aiScanState, saveAIScan } = useApp();
   const { notify } = useNotification();
-  const [image, setImage] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<DamageAnalysisResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { image, result, isAnalyzing } = aiScanState;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result as string);
-        setResult(null); // Reset previous results
+        saveAIScan({
+          image: reader.result as string,
+          result: null,
+          isAnalyzing: false
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -29,16 +32,19 @@ export const ImageAnalysis: React.FC = () => {
   const handleAnalyze = async () => {
     if (!image) return;
 
-    setIsAnalyzing(true);
+    saveAIScan({ ...aiScanState, isAnalyzing: true });
     try {
       const analysis = await analyzeVehicleImage(image);
-      setResult(analysis);
+      saveAIScan({
+        image,
+        result: analysis,
+        isAnalyzing: false
+      });
       notify('success', "Image analysis complete!");
     } catch (error: any) {
       console.error("Analysis failed:", error);
       notify('error', error.message || "Failed to analyze image. Please try again.");
-    } finally {
-      setIsAnalyzing(false);
+      saveAIScan({ ...aiScanState, isAnalyzing: false });
     }
   };
 

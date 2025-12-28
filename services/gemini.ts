@@ -1,6 +1,5 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { Vehicle } from "../types";
+import { Vehicle, DamageAnalysisResult } from "../types";
 
 // Initialize Gemini Client
 const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (window as any).process?.env?.GEMINI_API_KEY || 'MockKey';
@@ -11,17 +10,6 @@ const checkApiKey = () => {
     throw new Error("Missing Gemini API Key. Please set GEMINI_API_KEY in .env file.");
   }
 };
-
-export interface DamageAnalysisResult {
-  damageDetected: boolean;
-  overallAssessment: string;
-  identifiedParts: {
-    partName: string;
-    damageDescription: string;
-    confidenceLevel: 'High' | 'Medium' | 'Low';
-    searchQuery: string;
-  }[];
-}
 
 export const analyzeVehicleImage = async (base64Image: string): Promise<DamageAnalysisResult> => {
   try {

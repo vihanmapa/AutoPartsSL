@@ -1,9 +1,9 @@
 
-import { Product, Vehicle, Vendor, User, Order } from '../types';
+import { Product, Vehicle, Vendor, User, Order, Category, FeedbackItem } from '../types';
 import { MOCK_VEHICLES, MOCK_PRODUCTS, MOCK_VENDORS } from './mockData';
 import { db, auth, storage } from './firebase';
-import { collection, getDocs, getDoc, doc, setDoc, query, where, addDoc, onSnapshot, orderBy, updateDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { collection, getDocs, getDoc, doc, setDoc, query, where, addDoc, onSnapshot, orderBy, updateDoc, deleteDoc, writeBatch, increment, serverTimestamp } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, updateEmail, updatePassword, deleteUser } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const mapDoc = (doc: any) => ({ id: doc.id, ...doc.data() });
@@ -44,6 +44,43 @@ export const api = {
   getAllOrders: async (): Promise<Order[]> => {
     const querySnapshot = await getDocs(collection(db, 'orders'));
     return querySnapshot.docs.map((doc: any) => mapDoc(doc) as Order);
+  },
+
+  getCategories: async (): Promise<Category[]> => {
+    const querySnapshot = await getDocs(collection(db, 'categories'));
+    return querySnapshot.docs.map((doc: any) => mapDoc(doc) as Category);
+  },
+
+  subscribeToCategories: (callback: (categories: Category[]) => void) => {
+    console.log("Subscribing to categories collection...");
+    return onSnapshot(collection(db, 'categories'), (snapshot) => {
+      const categories = snapshot.docs.map((doc: any) => mapDoc(doc) as Category);
+      console.log("Firestore subscription update:", categories.length, "categories found.");
+      callback(categories);
+    });
+  },
+
+  seedCategories: async (): Promise<void> => {
+    const categories = [
+      { id: '1', name: 'Brake System', count: 145, icon: 'Disc', color: 'text-red-500' },
+      { id: '2', name: 'Engine Parts', count: 289, icon: 'Settings', color: 'text-slate-500' },
+      { id: '3', name: 'Lighting', count: 167, icon: 'Lightbulb', color: 'text-yellow-500' },
+      { id: '4', name: 'Suspension', count: 98, icon: 'Wrench', color: 'text-slate-400' },
+      { id: '5', name: 'Electrical', count: 234, icon: 'Zap', color: 'text-yellow-400' },
+      { id: '6', name: 'Exhaust System', count: 76, icon: 'Wind', color: 'text-slate-400' },
+      { id: '7', name: 'Filters', count: 189, icon: 'Search', color: 'text-slate-500' },
+      { id: '8', name: 'Body Parts', count: 312, icon: 'Car', color: 'text-red-600' },
+      { id: '9', name: 'Interior', count: 156, icon: 'Armchair', color: 'text-amber-700' },
+      { id: '10', name: 'Wheels & Tires', count: 203, icon: 'Circle', color: 'text-slate-900' },
+    ];
+
+    const batch = writeBatch(db);
+    categories.forEach((cat: any) => {
+      const ref = doc(db, 'categories', cat.id);
+      batch.set(ref, cat);
+    });
+    await batch.commit();
+    console.log("Seeded categories");
   },
 
   toggleVendorVerification: async (vendorId: string, verified: boolean): Promise<void> => {
@@ -153,12 +190,52 @@ export const api = {
     await updateDoc(orderRef, updateData);
   },
 
+  verifyOrderFitment: async (orderId: string, status: 'verified' | 'failed'): Promise<void> => {
+    const orderRef = doc(db, 'orders', orderId);
+    const updates: any = {
+      'vehicleDetails.verificationStatus': status
+    };
+    if (status === 'verified') {
+      updates['vehicleDetails.verifiedAt'] = new Date().toISOString();
+      updates['status'] = 'verified'; // Move order to verified bucket
+    }
+    await updateDoc(orderRef, updates);
+  },
+
+  cancelOrder: async (orderId: string, reason: string, description?: string): Promise<void> => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, {
+      status: 'refund_pending', // Waiting for Admin to refund
+      // paymentStatus: 'refunded', // REMOVED: Now handled by Admin later
+      cancellationReason: reason,
+      cancellationDetails: {
+        reason: reason as any,
+        description: description || ''
+      }
+    });
+  },
+
+  markOrderRefunded: async (orderId: string, adminId: string): Promise<void> => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, {
+      status: 'refunded',
+      paymentStatus: 'refunded',
+      refundedAt: new Date().toISOString(),
+      refundedBy: adminId
+    });
+  },
+
+  subscribeToAllOrders: (callback: (orders: Order[]) => void) => {
+    const q = query(collection(db, 'orders'));
+    return onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      callback(orders);
+    });
+  },
+
   loginUser: async (email: string, password?: string): Promise<User> => {
     if (!password) throw new Error("Password required");
-    if (email === 'admin@autoparts.lk' && password === 'admin123') {
-      await new Promise(r => setTimeout(r, 800));
-      return { id: 'admin_user', name: 'System Administrator', email, role: 'admin' };
-    }
+    // Removed hardcoded admin check. All users must be real Firebase users.
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const docRef = doc(db, 'users', userCredential.user.uid);
     const docSnap = await getDoc(docRef);
@@ -203,6 +280,39 @@ export const api = {
   updateProduct: async (id: string, data: Partial<Product>) => { await updateDoc(doc(db, 'products', id), data); },
   deleteProduct: async (id: string) => { await deleteDoc(doc(db, 'products', id)); },
   updateVendor: async (id: string, data: Partial<Vendor>) => { await updateDoc(doc(db, 'vendors', id), data); },
+  updateUser: async (id: string, data: Partial<User>) => { await updateDoc(doc(db, 'users', id), data); },
+
+  // Category management
+  addCategory: async (category: Category) => {
+    // Firestore rejects 'undefined', so we must sanitize
+    const data = { ...category };
+    if (data.parentId === undefined) delete data.parentId;
+    await setDoc(doc(db, 'categories', category.id), data);
+  },
+  updateCategory: async (id: string, data: Partial<Category>) => {
+    const cleanData = { ...data };
+    if (cleanData.parentId === undefined) delete cleanData.parentId;
+    await updateDoc(doc(db, 'categories', id), cleanData);
+  },
+  deleteCategory: async (id: string) => { await deleteDoc(doc(db, 'categories', id)); },
+
+  submitFeedback: async (data: Omit<FeedbackItem, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'feedback'), {
+      ...data,
+      createdAt: serverTimestamp()
+    });
+  },
+
+  getAllFeedback: async (): Promise<FeedbackItem[]> => {
+    const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date()
+    })) as FeedbackItem[];
+  },
+
   seedDatabase: async (onProgress?: (msg: string) => void) => {
     // Batch 1: Vehicles
     onProgress?.("Seeding vehicles (1/3)...");
@@ -238,18 +348,45 @@ export const api = {
     });
     await batch3.commit();
     console.log("Seeded vendors");
+
+    // Batch 4: Categories
+    onProgress?.("Seeding categories...");
+    await api.seedCategories();
+    console.log("Seeded categories");
   },
-  testConnection: async () => {
+
+  testConnection: async (): Promise<boolean> => {
     try {
-      const testDoc = doc(db, '_debug', 'connection_test');
-      await setDoc(testDoc, { timestamp: new Date().toISOString(), platform: 'ios_test' });
-      console.log("Write test success");
-      const snap = await getDoc(testDoc);
+      // Attempt a simple read operation to check connection
+      const snap = await getDoc(doc(db, 'test_collection', 'test_doc')); // Assuming 'test_collection' and 'test_doc' exist or can be created for a test
       console.log("Read test success:", snap.exists());
       return true;
     } catch (e) {
       console.error("Connection test failed:", e);
       throw e;
     }
+  },
+
+  // Auth Management
+  updateUserEmail: async (newEmail: string): Promise<void> => {
+    if (!auth.currentUser) throw new Error("No user logged in");
+    await updateEmail(auth.currentUser, newEmail);
+    // Sync to Firestore
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), { email: newEmail });
+  },
+
+  updateUserPassword: async (newPassword: string): Promise<void> => {
+    if (!auth.currentUser) throw new Error("No user logged in");
+    await updatePassword(auth.currentUser, newPassword);
+  },
+
+  deleteUserAccount: async (): Promise<void> => {
+    if (!auth.currentUser) throw new Error("No user logged in");
+    const uid = auth.currentUser.uid;
+    // Delete from Auth
+    await deleteUser(auth.currentUser);
+    // Delete from Firestore (Optional: keep for records, or delete PII)
+    // Here we delete the user document as requested "Online Account permanently deleted"
+    await deleteDoc(doc(db, 'users', uid));
   }
 };

@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { validateVIN, formatVIN } from '../utils/validators';
 import { useApp } from '../context/AppContext';
 import { useNotification } from '../context/NotificationContext';
 import { Address, PaymentMethod } from '../types';
@@ -21,6 +22,21 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // VIN Logic
+  const [vinInput, setVinInput] = useState('');
+  const [isVinTouched, setIsVinTouched] = useState(false);
+
+  const requiresVin = useMemo(() => {
+    return cart.some(item =>
+      item.price > 50000 ||
+      item.requiresVin === true ||
+      (item.category && item.category.includes('European'))
+    );
+  }, [cart]);
+
+  const isVinValid = validateVIN(vinInput);
+  const showVinError = isVinTouched && !isVinValid;
 
   // Redirect empty cart
   useEffect(() => {
@@ -77,7 +93,15 @@ export const Checkout: React.FC = () => {
     setIsProcessing(true);
     setPaymentError(null);
     try {
-      await placeOrder(address, paymentMethod);
+      if (requiresVin && !isVinValid) {
+        setIsVinTouched(true);
+        notify('error', "Please enter a valid VIN to ensure these parts fit.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const vehicleDetails = requiresVin ? { vinNumber: formatVIN(vinInput) } : undefined;
+      await placeOrder(address, paymentMethod, vehicleDetails);
       // Success is handled by context (redirects to order-success)
     } catch (error: any) {
       setPaymentError(error.message || "Payment Failed");
@@ -295,6 +319,39 @@ export const Checkout: React.FC = () => {
                   ))}
                 </div>
 
+                {requiresVin && (
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 animate-in fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl">🛡️</div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-blue-900">Fitment Protection Required</h3>
+                        <p className="text-sm text-blue-800 mb-3">
+                          Your cart contains specialized or high-value parts. Please enter your VIN / Chassis Number so we can verify they fit your car before shipping.
+                        </p>
+
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                          Vehicle ID (VIN / Frame No)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. WBA3D... or NHP10-123..."
+                          className={`w-full p-3 border rounded font-mono uppercase ${showVinError ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:ring-secondary'
+                            }`}
+                          value={vinInput}
+                          onChange={(e) => setVinInput(e.target.value)}
+                          onBlur={() => setIsVinTouched(true)}
+                        />
+
+                        {showVinError && (
+                          <p className="text-red-600 text-xs mt-1 font-medium">
+                            ⚠️ Invalid ID. Must be 10-17 alphanumeric characters.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {paymentError && (
                   <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 text-sm border border-red-200">
                     <AlertTriangle className="h-4 w-4" />
@@ -306,9 +363,9 @@ export const Checkout: React.FC = () => {
                   <Button
                     onClick={handleConfirmOrder}
                     className="w-full md:w-auto px-8 py-3 text-lg"
-                    disabled={isProcessing}
+                    disabled={isProcessing || (requiresVin && !isVinValid)}
                   >
-                    {isProcessing ? 'Processing Payment...' : `Pay LKR ${grandTotal.toLocaleString()}`}
+                    {isProcessing ? 'Processing Payment...' : (requiresVin && !isVinValid ? 'Enter VIN to Proceed' : `Pay LKR ${grandTotal.toLocaleString()}`)}
                   </Button>
                 </div>
               </div>
